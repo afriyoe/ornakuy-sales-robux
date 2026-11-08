@@ -160,7 +160,6 @@
 <body>
 <div class="lock" id="lock">
   <form class="lock-card" id="lockForm" autocomplete="off">
-    <div class="logo" style="margin:0 auto 12px">OK</div>
     <h2>ORNA KUY - Sales Robux</h2>
     <p class="muted" style="margin:4px 0 16px">Masukkan sandi untuk membuka</p>
     <input class="f num" type="password" inputmode="numeric" id="lockIn" style="text-align:center;font-size:18px;letter-spacing:4px">
@@ -171,7 +170,6 @@
 <div class="wrap" id="app" hidden>
   <header>
     <div class="brand">
-      <div class="logo">OK</div>
       <div>
         <h1>ORNA KUY - Sales Robux</h1>
         <p>Catatan penjualan, payout &amp; akun</p>
@@ -1262,7 +1260,6 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
         <div class="row-gap"><button class="btn sm primary" data-saldo-shot>Update dari screenshot</button><button class="btn sm" data-saldo-manual>Isi manual</button><button class="btn sm" data-saldo-hist>Riwayat</button></div></div>
       <div class="bd"><div class="kpis" style="margin:0">
         ${tile('Community Funds', fmtInt(s.funds), 'di screenshot', true)}
-        ${tile('Pending Robux', fmtInt(s.pending), 'di screenshot')}
         ${tile('Community Revenue Payouts', fmtInt(Math.abs(+s.revenuePayouts||0)), 'di screenshot')}
         ${tile('Payout tercatat sesudahnya', fmtInt(after), `setelah ${fmtDate(s.tanggal)}`)}
         ${tile('Perkiraan funds sekarang', fmtInt((+s.funds||0) - after), 'funds acuan − payout sesudahnya')}
@@ -1300,7 +1297,6 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
         <div class="muted" id="ocrMsg" style="font-size:12.5px;margin-top:6px"></div></div>` : ''}
       <div class="field"><label>Tanggal screenshot</label><input class="f" type="date" id="sdTgl" value="${esc(v.tanggal)}"></div>
       <div class="field"><label>Community Funds</label><input class="f num" type="number" min="0" id="sdFunds" value="${esc(v.funds)}"></div>
-      <div class="field"><label>Pending Robux</label><input class="f num" type="number" min="0" id="sdPending" value="${esc(v.pending)}"></div>
       <div class="field"><label>Community Revenue Payouts</label><input class="f num" type="number" min="0" id="sdRev" value="${esc(v.revenuePayouts)}"></div>
       <div class="err" id="sdErr"></div>`,
       `<button class="btn" data-close>Batal</button><button class="btn primary" id="sdSave">Simpan</button>`);
@@ -1316,11 +1312,10 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
           const { data } = await T.recognize(file, 'eng');
           const r = parseSaldoText(data.text || '');
           if (r.funds != null) $('#sdFunds').value = r.funds;
-          if (r.pending != null) $('#sdPending').value = r.pending;
           if (r.revenuePayouts != null) $('#sdRev').value = r.revenuePayouts;
           $('#sdTgl').value = today();
-          const got = Object.keys(r).length;
-          $('#ocrMsg').textContent = got === 3 ? '✓ Semua angka terbaca — cek lagi sebelum simpan.' : `${got} dari 3 angka terbaca — lengkapi yang kosong secara manual.`;
+          const got = ['funds','revenuePayouts'].filter(k => r[k] != null).length;
+          $('#ocrMsg').textContent = got === 2 ? '✓ Semua angka terbaca — cek lagi sebelum simpan.' : `${got} dari 2 angka terbaca — lengkapi yang kosong secara manual.`;
         } catch(e){
           $('#ocrMsg').textContent = 'Baca otomatis tidak bisa di sini (di pratinjau Claude akses OCR diblokir; jalan setelah di GitHub). Isi angkanya manual dari screenshot.';
         }
@@ -1339,11 +1334,11 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       document.addEventListener('paste', pasteHandler);
     }
     $('#sdSave').onclick = () => {
-      const nv = { tanggal: $('#sdTgl').value, funds: +$('#sdFunds').value || 0, pending: +$('#sdPending').value || 0, revenuePayouts: +$('#sdRev').value || 0 };
+      const nv = { tanggal: $('#sdTgl').value, funds: +$('#sdFunds').value || 0, revenuePayouts: +$('#sdRev').value || 0 };
       if (!nv.tanggal || $('#sdFunds').value === ''){ $('#sdErr').textContent = 'Tanggal dan Community Funds wajib diisi.'; return; }
       const row = (l, a, b) => `<div><span class="muted">${l}</span><span>${a === '' || a == null ? '' : `<span class="old">${fmtInt(a)}</span> → `}<span class="new">${fmtInt(b)}</span></span></div>`;
       openModal('Simpan saldo baru?', `<p style="margin:0 0 8px">Jadi acuan baru per ${fmtDate(nv.tanggal)}:</p><div class="diff">
-        ${row('Funds', s.funds, nv.funds)}${row('Pending', s.pending, nv.pending)}${row('Rev. Payouts', s.revenuePayouts == null ? '' : Math.abs(s.revenuePayouts), nv.revenuePayouts)}</div>`,
+        ${row('Funds', s.funds, nv.funds)}${row('Rev. Payouts', s.revenuePayouts == null ? '' : Math.abs(s.revenuePayouts), nv.revenuePayouts)}</div>`,
         `<button class="btn" id="sdBack">Batal</button><button class="btn primary" id="sdYakin">Yakin, simpan</button>`);
       $('#sdBack').onclick = () => openSaldo(mode, nv);
       $('#sdYakin').onclick = () => { db.snapshots.push({ id: uid(), ...nv }); save(); closeModal(); renderAll(); toast('Saldo grup diperbarui'); };
@@ -1353,8 +1348,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   function openSaldoHist(){
     const rows = [...db.snapshots].sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
     openModal('Riwayat saldo grup', `<div class="table-wrap" style="border:1px solid var(--line);border-radius:10px"><table>
-      <thead><tr><th>Tanggal</th><th class="r">Funds</th><th class="r">Pending</th><th class="r">Rev. Payouts</th><th></th></tr></thead>
-      <tbody>${rows.length ? rows.map(r => `<tr><td>${fmtDate(r.tanggal)}</td><td class="r num">${fmtInt(r.funds)}</td><td class="r num">${fmtInt(r.pending)}</td><td class="r num">${fmtInt(Math.abs(+r.revenuePayouts||0))}</td>
+      <thead><tr><th>Tanggal</th><th class="r">Funds</th><th class="r">Rev. Payouts</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => `<tr><td>${fmtDate(r.tanggal)}</td><td class="r num">${fmtInt(r.funds)}</td><td class="r num">${fmtInt(Math.abs(+r.revenuePayouts||0))}</td>
         <td class="actions"><button class="icon-btn del" data-snapdel="${r.id}" title="Hapus">${TRASH}</button></td></tr>`).join('') : emptyRow(5, 'Belum ada riwayat.')}</tbody></table></div>`,
       `<button class="btn" data-close>Tutup</button>`);
     document.querySelectorAll('[data-snapdel]').forEach(b => b.onclick = () => {
