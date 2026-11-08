@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORNA KUY - Sales Robux</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --ink:#14161c; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#0f9d58; --accent-ink:#ffffff; --accent-soft:#e3f5ec;
+    --blue:#2563eb; --blue-soft:#e6eeff; --red:#dc2626; --red-soft:#fde8e8; --amber:#b45309; --amber-soft:#fdf1dc;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0e1015; --panel:#171a21; --ink:#eef0f4; --muted:#9aa3b2; --line:#272b35;
+      --accent:#22c470; --accent-ink:#06120b; --accent-soft:#12301f;
+      --blue:#6b9bff; --blue-soft:#18233d; --red:#f87171; --red-soft:#3a1a1a; --amber:#f5b453; --amber-soft:#3a2a12;
+      --shadow:none;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:"Plus Jakarta Sans",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  .num{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 60px}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:40px;height:40px;border-radius:11px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:800;letter-spacing:-.5px}
+  .brand h1{font-size:19px;margin:0;letter-spacing:-.3px}
+  .brand p{margin:0;color:var(--muted);font-size:12.5px}
+
+  nav.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);padding:4px;border-radius:12px;box-shadow:var(--shadow);overflow-x:auto}
+  nav.tabs a{padding:8px 14px;border-radius:9px;text-decoration:none;color:var(--muted);font-weight:600;white-space:nowrap}
+  nav.tabs a.active{background:var(--ink);color:var(--bg)}
+  nav.tabs a:not(.active):hover{color:var(--ink)}
+
+  .banner{background:var(--amber-soft);color:var(--amber);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:500;display:none}
+
+  .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+  .toolbar h2{margin:0;font-size:17px}
+  .toolbar .right{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  .btn{border:1px solid var(--line);background:var(--panel);padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:var(--muted)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.primary:hover{filter:brightness(1.05)}
+  .btn.danger{background:var(--red);border-color:var(--red);color:#fff}
+  .btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+  .icon-btn{border:0;background:transparent;cursor:pointer;color:var(--muted);padding:5px;border-radius:7px;display:inline-grid;place-items:center}
+  .icon-btn:hover{background:var(--bg);color:var(--ink)}
+  .icon-btn.del:hover{color:var(--red);background:var(--red-soft)}
+
+  input.f,select.f,textarea.f{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 11px;outline:none;width:100%}
+  input.f:focus,select.f:focus,textarea.f:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .search{width:220px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;background:var(--panel);position:sticky;top:0}
+  td.r,th.r{text-align:right}
+  tbody tr:hover{background:color-mix(in srgb,var(--bg) 60%,transparent)}
+  tfoot td{font-weight:700;border-bottom:0;background:color-mix(in srgb,var(--bg) 50%,transparent)}
+  .empty{padding:40px 16px;text-align:center;color:var(--muted)}
+  .actions{width:1%;text-align:right}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.Aktif{background:var(--accent-soft);color:var(--accent)}
+  .pill.Nonaktif{background:var(--bg);color:var(--muted)}
+  .pill.Banned{background:var(--red-soft);color:var(--red)}
+  .pill.Pending{background:var(--amber-soft);color:var(--amber)}
+  .pill.st-lp{background:var(--accent-soft);color:var(--accent)}
+  .pill.st-l{background:var(--amber-soft);color:var(--amber)}
+  .pill.st-p{background:var(--blue-soft);color:var(--blue)}
+  .pill.src{background:var(--blue-soft);color:var(--blue)}
+
+  .secret{display:inline-flex;align-items:center;gap:4px}
+  .secret .val{cursor:pointer;padding:2px 8px;border-radius:6px;background:var(--bg);border:1px dashed var(--line);user-select:none;min-width:90px;display:inline-block}
+  .secret .val.shown{user-select:text;border-style:solid}
+  .secret .val:hover{border-color:var(--muted)}
+
+  /* Dashboard */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+  .kpi{padding:14px 16px}
+  .kpi .lbl{color:var(--muted);font-size:12px;font-weight:600}
+  .kpi .val{font-size:22px;font-weight:600;margin-top:4px;letter-spacing:-.5px}
+  .kpi .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  .kpi.hl{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .kpi.hl .lbl,.kpi.hl .sub{color:color-mix(in srgb,var(--bg) 70%,transparent)}
+  .grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:14px}
+  @media (max-width:860px){.grid2{grid-template-columns:1fr}}
+  .card h3{margin:0;font-size:14px}
+  .card .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 4px;gap:10px;flex-wrap:wrap}
+  .card .bd{padding:10px 16px 16px}
+  .legend{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .target-bar{height:12px;border-radius:999px;background:var(--bg);overflow:hidden;margin:10px 0 8px;border:1px solid var(--line)}
+  .target-bar span{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .4s}
+  .share{height:6px;border-radius:999px;background:var(--bg);overflow:hidden;width:90px;display:inline-block;vertical-align:middle;margin-left:8px}
+  .share span{display:block;height:100%;background:var(--blue)}
+  svg text{font-family:"Plus Jakarta Sans",sans-serif}
+  .muted{color:var(--muted)}
+  .row-gap{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(10,12,16,.45);display:none;align-items:flex-start;justify-content:center;padding:6vh 14px;z-index:50;overflow-y:auto}
+  .overlay.open{display:flex}
+  .modal{background:var(--panel);border-radius:16px;width:100%;max-width:460px;border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .modal .mh{padding:16px 18px 6px;display:flex;justify-content:space-between;align-items:center}
+  .modal .mh h3{margin:0;font-size:16px}
+  .modal .mb{padding:8px 18px}
+  .modal .mf{padding:12px 18px 16px;display:flex;justify-content:flex-end;gap:8px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  .field .req{color:var(--red)}
+  .pw-wrap{position:relative}
+  .pw-wrap .icon-btn{position:absolute;right:5px;top:50%;transform:translateY(-50%)}
+  .pw-wrap input{padding-right:38px}
+  .err{color:var(--red);font-size:12.5px;min-height:16px}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  [hidden]{display:none!important}
+  .lock{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:100;padding:20px}
+  .lock-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px 24px;width:100%;max-width:340px;text-align:center;box-shadow:var(--shadow)}
+  .lock-card h2{margin:0;font-size:18px}
+  .shake{animation:shake .35s}
+  @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+  #remindBar{display:block}
+
+  /* Quick add */
+  .quick textarea{min-height:76px;resize:vertical}
+  .qtable{margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+  .qtable td{padding:6px 8px;vertical-align:top}
+  .qtable input.f{padding:6px 8px;font-size:13px;border-radius:8px}
+  .qtable input.f.invalid{border-color:var(--red);background:var(--red-soft)}
+  .qtable .raw{font-size:11.5px;color:var(--muted);white-space:normal;min-width:160px;max-width:260px}
+  .qtable .warn{display:block;font-size:11px;color:var(--amber);margin-top:3px;white-space:normal}
+  .qfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .diff{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:4px 0 6px}
+  .diff div{display:grid;grid-template-columns:110px 1fr;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px}
+  .diff div:last-child{border-bottom:0}
+  .diff .old{color:var(--red);text-decoration:line-through}
+  .diff .new{color:var(--accent);font-weight:600}
+  .rule-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="lock" id="lock">
+  <form class="lock-card" id="lockForm" autocomplete="off">
+    <div class="logo" style="margin:0 auto 12px">OK</div>
+    <h2>ORNA KUY - Sales Robux</h2>
+    <p class="muted" style="margin:4px 0 16px">Masukkan sandi untuk membuka</p>
+    <input class="f num" type="password" inputmode="numeric" id="lockIn" style="text-align:center;font-size:18px;letter-spacing:4px">
+    <div class="err" id="lockErr" style="margin:6px 0"></div>
+    <button class="btn primary" style="width:100%;justify-content:center">Buka</button>
+  </form>
+</div>
+<div class="wrap" id="app" hidden>
+  <header>
+    <div class="brand">
+      <div class="logo">OK</div>
+      <div>
+        <h1>ORNA KUY - Sales Robux</h1>
+        <p>Catatan penjualan, payout &amp; akun</p>
+      </div>
+    </div>
+    <div class="row-gap">
+    <button class="btn sm" id="btnSync"></button>
+    <nav class="tabs" id="tabs">
+      <a href="#dashboard" data-view="dashboard">Dashboard</a>
+      <a href="#sales" data-view="sales">Sales</a>
+      <a href="#payout" data-view="payout">Payout</a>
+      <a href="#akun" data-view="akun">Akun</a>
+    </nav>
+    </div>
+  </header>
+
+  <div class="banner" id="remindBar" hidden></div>
+  <div class="banner" id="storageBanner">Penyimpanan browser tidak tersedia di sini — data hilang saat halaman ditutup. Simpan dengan tombol <b>Backup</b> di Dashboard.</div>
+
+  <!-- DASHBOARD -->
+  <section id="view-dashboard" hidden>
+    <div class="toolbar">
+      <h2>Ringkasan</h2>
+      <div class="right">
+        <select class="f" id="periodSel" style="width:auto"></select>
+        <button class="btn" id="btnBackup">Backup / Restore</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="hd">
+          <h3>Robux per bulan</h3>
+          <div class="legend"><span><i style="background:var(--accent)"></i>Terjual</span><span><i style="background:var(--blue)"></i>Payout</span></div>
+        </div>
+        <div class="bd" id="chartMonthly"></div>
+      </div>
+      <div class="card">
+        <div class="hd">
+          <h3 id="targetTitle">Target bulan ini</h3>
+          <button class="btn sm" id="btnTarget">Ubah target</button>
+        </div>
+        <div class="bd" id="targetBox"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="hd"><h3>Per sumber website</h3></div>
+        <div class="table-wrap"><table id="tblSource"></table></div>
+      </div>
+      <div class="card">
+        <div class="hd"><h3>Payout per username</h3></div>
+        <div class="table-wrap"><table id="tblPayoutUser"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SALES -->
+  <section id="view-sales" hidden>
+    <div class="toolbar">
+      <h2>Sales</h2>
+      <div class="right">
+        <input class="f search" id="qSales" placeholder="Cari sumber / ID pesanan…">
+        <button class="btn primary" data-add="sales">+ Tambah sales</button>
+      </div>
+    </div>
+    <div class="card quick" data-quick="sales" style="margin-bottom:14px"></div>
+    <div class="card table-wrap"><table id="tblSales"></table></div>
+  </section>
+
+  <!-- PAYOUT -->
+  <section id="view-payout" hidden>
+    <div class="toolbar">
+      <h2>Payout</h2>
+      <div class="right">
+        <input class="f search" id="qPayout" placeholder="Cari username…">
+        <button class="btn primary" data-add="payouts">+ Tambah payout</button>
+      </div>
+    </div>
+    <div class="card" id="saldoCard" style="margin-bottom:14px"></div>
+    <div class="card quick" data-quick="payouts" style="margin-bottom:14px"></div>
+    <div class="card table-wrap"><table id="tblPayout"></table></div>
+  </section>
+
+  <!-- AKUN -->
+  <section id="view-akun" hidden>
+    <div class="toolbar">
+      <h2>Akun</h2>
+      <div class="right">
+        <input class="f search" id="qAkun" placeholder="Cari username / email…">
+        <button class="btn primary" data-add="accounts">+ Tambah akun</button>
+      </div>
+    </div>
+    <div class="card quick" data-quick="accounts" style="margin-bottom:14px"></div>
+    <div class="card table-wrap"><table id="tblAkun"></table></div>
+    <p class="muted" style="font-size:12.5px;margin-top:10px">Klik sandi untuk menampilkan / menyembunyikan.</p>
+  </section>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="mh"><h3 id="mTitle"></h3><button class="icon-btn" data-close aria-label="Tutup">✕</button></div>
+    <div class="mb" id="mBody"></div>
+    <div class="mf" id="mFoot"></div>
+  </div>
+</div>
+
+<script type="text/plain" id="gsCode">
+/**
+ * ORNA KUY - Sales Robux  ↔  Google Sheets
+ * Tempel di Extensions → Apps Script pada spreadsheet, ganti KUNCI, lalu Deploy sebagai Web app.
+ */
+const SHEET_ID = '1jxorIFEuOVPtn8CpYvq-TO8aOfSTm54a_dsJHF9NoSw';
+const KUNCI = 'GANTI_DENGAN_KUNCI_RAHASIAMU';
+
+const TABLES = {
+  sales:     { sheet: 'Sales',  cols: ['id','tanggal','sumber','idPesanan','robux','pendapatan'], nums: ['robux','pendapatan'] },
+  payouts:   { sheet: 'Payout', cols: ['id','tanggal','username','payout'], nums: ['payout'] },
+  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin'], nums: ['sisaLimit'] },
+  snapshots: { sheet: 'Saldo Grup', cols: ['id','tanggal','funds','pending','revenuePayouts'], nums: ['funds','pending','revenuePayouts'] },
+};
+
+function doGet(e) {
+  if (!e || !e.parameter || e.parameter.key !== KUNCI) return out_({ ok: false, error: 'Kunci salah' });
+  return out_({ ok: true, data: readAll_(), at: new Date().toISOString() });
+}
+
+function doPost(e) {
+  let body;
+  try { body = JSON.parse(e.postData.contents); } catch (err) { return out_({ ok: false, error: 'Format tidak valid' }); }
+  if (body.key !== KUNCI) return out_({ ok: false, error: 'Kunci salah' });
+  if (body.action === 'saveAll') {
+    const lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try { writeAll_(body.data || {}); } finally { lock.releaseLock(); }
+    return out_({ ok: true, at: new Date().toISOString() });
+  }
+  return out_({ ok: false, error: 'Aksi tidak dikenal' });
+}
+
+function ss_() { return SpreadsheetApp.openById(SHEET_ID); }
+function sheet_(name) { const ss = ss_(); return ss.getSheetByName(name) || ss.insertSheet(name); }
+
+function readAll_() {
+  const tz = ss_().getSpreadsheetTimeZone();
+  const data = {};
+  Object.keys(TABLES).forEach(function (k) {
+    const t = TABLES[k], sh = sheet_(t.sheet), vals = sh.getDataRange().getValues();
+    if (vals.length &lt; 2) { data[k] = []; return; }
+    const head = vals[0].map(String);
+    data[k] = vals.slice(1).filter(function (r) { return r.join('') !== ''; }).map(function (r) {
+      const o = {};
+      t.cols.forEach(function (c) {
+        const i = head.indexOf(c); let v = i > -1 ? r[i] : '';
+        if (v instanceof Date) v = Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+        o[c] = t.nums.indexOf(c) > -1 ? (Number(v) || 0) : String(v);
+      });
+      if (!o.id) o.id = Utilities.getUuid();
+      return o;
+    });
+  });
+  // Pengaturan (target, pola ID)
+  const sv = sheet_('Pengaturan').getDataRange().getValues(), settings = {};
+  sv.slice(1).forEach(function (r) { if (r[0]) { try { settings[r[0]] = JSON.parse(r[1]); } catch (e) { settings[r[0]] = r[1]; } } });
+  data.settings = settings;
+  return data;
+}
+
+function writeAll_(data) {
+  Object.keys(TABLES).forEach(function (k) {
+    const t = TABLES[k], sh = sheet_(t.sheet), rows = (data[k] || []);
+    const values = [t.cols].concat(rows.map(function (o) {
+      return t.cols.map(function (c) { const v = o[c]; return t.nums.indexOf(c) > -1 ? (Number(v) || 0) : (v == null ? '' : String(v)); });
+    }));
+    sh.clearContents();
+    // kolom teks dibuat "plain text" supaya sandi seperti 012569 tidak kehilangan angka 0 dan tanggal tidak diubah
+    t.cols.forEach(function (c, i) { if (t.nums.indexOf(c) === -1) sh.getRange(1, i + 1, Math.max(values.length, 2), 1).setNumberFormat('@'); });
+    sh.getRange(1, 1, values.length, t.cols.length).setValues(values);
+    sh.getRange(1, 1, 1, t.cols.length).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  });
+  const s = data.settings || {}, sh = sheet_('Pengaturan');
+  const vals = [['key', 'value']].concat(Object.keys(s).map(function (k) { return [k, JSON.stringify(s[k])]; }));
+  sh.clearContents();
+  sh.getRange(1, 1, vals.length, 2).setNumberFormat('@').setValues(vals);
+}
+
+function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+</script>
+<datalist id="dl-sumber"></datalist>
+<datalist id="dl-username"></datalist>
+<datalist id="dl-status"></datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const KEY = 'ornakuy-sales-v1';
+  const $ = s => document.querySelector(s);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmtInt = n => new Intl.NumberFormat('id-ID').format(Math.round(+n || 0));
+  const fmtRbx = n => fmtInt(n);
+  const fmtRp = n => 'Rp ' + fmtInt(n);
+  const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const fmtDate = d => { if(!d) return '—'; const [y,m,dd] = d.split('-'); return `${+dd} ${BULAN[+m-1]} ${y}`; };
+  const monthKey = d => (d || '').slice(0,7);
+  const monthLabel = k => { const [y,m] = k.split('-'); return `${BULAN[+m-1]} ${y}`; };
+  const pad = n => String(n).padStart(2,'0');
+  const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today = () => isoDate(new Date());
+  const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return isoDate(d); };
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+  // ---------- Storage ----------
+  let storageOk = true;
+  const DEFAULT_RULES = () => [ { prefix:'OD', sumber:'Itemku' }, { prefix:'GBX-', sumber:'Indoblox' } ];
+  // acuan awal dari screenshot halaman Revenue grup ORNA (8 Nov 2026)
+  const BASE_SNAP = () => [{ id: 'base-20261108', tanggal: '2026-11-08', funds: 73145, pending: 685313, revenuePayouts: 3200 }];
+  const blank = () => ({ sales: [], payouts: [], accounts: [], snapshots: BASE_SNAP(), settings: { target: 100000, idRules: DEFAULT_RULES() } });
+  let db = blank();
+  function normalize(){
+    db.settings = Object.assign(blank().settings, db.settings || {});
+    if (!Array.isArray(db.settings.idRules)) db.settings.idRules = DEFAULT_RULES();
+    if (!Array.isArray(db.snapshots)) db.snapshots = BASE_SNAP();
+  }
+  function load(){
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) db = Object.assign(blank(), JSON.parse(raw));
+    } catch(e){ storageOk = false; }
+    normalize();
+  }
+  function persistLocal(){
+    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e){ storageOk = false; }
+    $('#storageBanner').style.display = storageOk ? 'none' : 'block';
+  }
+  // simpan lokal + kirim otomatis ke spreadsheet (kalau tersambung)
+  function save(){ persistLocal(); schedulePush(); }
+
+  // ---------- Schemas ----------
+  const SCHEMA = {
+    sales: { title: 'Sales', fields: [
+      { k:'tanggal', label:'Tanggal', type:'date', req:true, def: today },
+      { k:'sumber', label:'Sumber website', type:'text', list:'dl-sumber', req:true, ph:'mis. nama website / marketplace' },
+      { k:'idPesanan', label:'ID pesanan', type:'text' },
+      { k:'robux', label:'Jumlah Robux', type:'number', req:true },
+      { k:'pendapatan', label:'Pendapatan (Rp)', type:'number' },
+    ]},
+    payouts: { title: 'Payout', fields: [
+      { k:'tanggal', label:'Tanggal', type:'date', req:true, def: today },
+      { k:'username', label:'Username', type:'text', list:'dl-username', req:true, fix: v => v ? (v.startsWith('@') ? v : '@' + v) : v },
+      { k:'payout', label:'Jumlah payout (Robux)', type:'number', req:true },
+    ]},
+    accounts: { title: 'Akun', fields: [
+      { k:'username', label:'Username', type:'text', req:true, fix: v => v.replace(/^@+/, '') },
+      { k:'status', label:'Status', type:'text', list:'dl-status', ph:'Limit 10k dan Plus / Limit 10k / Plus' },
+      { k:'sisaLimit', label:'Sisa limit (Robux)', type:'number' },
+      { k:'sandi', label:'Sandi', type:'password' },
+      { k:'email', label:'Email', type:'email' },
+      { k:'sandiEmail', label:'Sandi email', type:'password' },
+      { k:'tglJoin', label:'Tanggal join komunitas', type:'date' },
+    ]},
+  };
+
+  // ---------- Modal ----------
+  const overlay = $('#overlay');
+  function openModal(title, bodyHtml, footHtml){
+    $('#mTitle').textContent = title;
+    $('#mBody').innerHTML = bodyHtml;
+    $('#mFoot').innerHTML = footHtml;
+    overlay.classList.add('open');
+    const first = $('#mBody').querySelector('input,select,textarea');
+    if (first) setTimeout(() => first.focus(), 30);
+  }
+  function closeModal(){ overlay.classList.remove('open'); }
+  overlay.addEventListener('click', e => { if (e.target === overlay || e.target.closest('[data-close]')) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function toast(msg){
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function refreshDatalists(){
+    const srcs = [...new Set(db.sales.map(s => s.sumber).filter(Boolean))].sort();
+    $('#dl-sumber').innerHTML = srcs.map(s => `<option value="${esc(s)}">`).join('');
+    const users = [...new Set([...db.accounts.map(a => a.username && '@' + a.username.replace(/^@+/, '')), ...db.payouts.map(p => p.username)].filter(Boolean))].sort();
+    $('#dl-status').innerHTML = [...new Set(['Limit 10k dan Plus','Limit 10k','Plus', ...db.accounts.map(a => a.status)].filter(Boolean))].map(s => `<option value="${esc(s)}">`).join('');
+    $('#dl-username').innerHTML = users.map(s => `<option value="${esc(s)}">`).join('');
+  }
+
+  // Tampilan nilai untuk ringkasan & diff
+  function showVal(f, v){
+    if (v === '' || v == null) return '<span class="muted">—</span>';
+    if (f.type === 'password') return '••••••••';
+    if (f.type === 'date') return fmtDate(v);
+    if (f.k === 'pendapatan') return fmtRp(v);
+    if (f.type === 'number') return fmtInt(v);
+    return esc(v);
+  }
+
+  // Langkah 1: peringatan sebelum masuk mode edit
+  function startEdit(coll, id){
+    const sc = SCHEMA[coll], rec = db[coll].find(r => r.id === id);
+    if (!rec) return;
+    const sum = sc.fields.map(f => `<div><span class="muted">${f.label}</span><span>${showVal(f, rec[f.k])}</span></div>`).join('');
+    openModal('Edit data ini?', `<p style="margin:0 0 8px">Kamu akan mengubah data berikut:</p><div class="diff">${sum}</div>`,
+      `<button class="btn" data-close>Batal</button><button class="btn primary" id="btnYakinEdit">Yakin, edit</button>`);
+    $('#btnYakinEdit').onclick = () => openForm(coll, id);
+  }
+
+  // Langkah 2: peringatan sebelum menyimpan perubahan
+  function confirmSaveEdit(coll, rec, out){
+    const sc = SCHEMA[coll];
+    const changed = sc.fields.filter(f => String(rec[f.k] ?? '') !== String(out[f.k] ?? ''));
+    if (!changed.length){ closeModal(); toast('Tidak ada perubahan'); return; }
+    const rows = changed.map(f => `<div><span class="muted">${f.label}</span><span>${f.type==='password' ? '<span class="new">diubah</span>' :
+      `<span class="old">${showVal(f, rec[f.k])}</span> → <span class="new">${showVal(f, out[f.k])}</span>`}</span></div>`).join('');
+    openModal('Simpan perubahan?', `<p style="margin:0 0 8px">Perubahan ini akan menimpa data lama:</p><div class="diff">${rows}</div>`,
+      `<button class="btn" id="btnBackEdit">Batal</button><button class="btn primary" id="btnYakinSave">Yakin, simpan</button>`);
+    $('#btnBackEdit').onclick = () => openForm(coll, rec.id, out);
+    $('#btnYakinSave').onclick = () => {
+      const i = db[coll].findIndex(r => r.id === rec.id);
+      if (i > -1) db[coll][i] = out;
+      save(); closeModal(); renderAll(); toast('Perubahan disimpan');
+    };
+  }
+
+  function openForm(coll, id, draft){
+    const sc = SCHEMA[coll];
+    const rec = id ? db[coll].find(r => r.id === id) : null;
+    const src = draft || rec;
+    const body = sc.fields.map(f => {
+      const v = src ? (src[f.k] ?? '') : (f.def ? f.def() : '');
+      const req = f.req ? ' <span class="req">*</span>' : '';
+      let input;
+      if (f.type === 'select'){
+        input = `<select class="f" name="${f.k}">${f.options.map(o => `<option ${o===v?'selected':''}>${o}</option>`).join('')}</select>`;
+      } else if (f.type === 'password'){
+        input = `<div class="pw-wrap"><input class="f" type="password" name="${f.k}" value="${esc(v)}" autocomplete="new-password"><button type="button" class="icon-btn" data-pwtoggle title="Tampilkan">${EYE}</button></div>`;
+      } else {
+        input = `<input class="f ${f.type==='number'?'num':''}" type="${f.type}" name="${f.k}" value="${esc(v)}" ${f.list?`list="${f.list}"`:''} ${f.ph?`placeholder="${esc(f.ph)}"`:''} ${f.type==='number'?'min="0" step="any" inputmode="decimal"':''}>`;
+      }
+      return `<div class="field"><label>${f.label}${req}</label>${input}</div>`;
+    }).join('') + `<div class="err" id="formErr"></div>`;
+    openModal((rec ? 'Edit ' : 'Tambah ') + sc.title.toLowerCase(),
+      `<form id="recForm">${body}<button type="submit" hidden></button></form>`,
+      `<button class="btn" data-close>Batal</button><button class="btn primary" id="btnSave">Simpan</button>`);
+    const form = $('#recForm');
+    form.querySelectorAll('[data-pwtoggle]').forEach(b => b.addEventListener('click', () => {
+      const i = b.parentElement.querySelector('input'); i.type = i.type === 'password' ? 'text' : 'password';
+    }));
+    const submit = e => {
+      e && e.preventDefault();
+      const out = rec ? { ...rec } : { id: uid() };
+      for (const f of sc.fields){
+        let v = form.elements[f.k].value.trim();
+        if (f.req && v === ''){ $('#formErr').textContent = `${f.label} wajib diisi.`; form.elements[f.k].focus(); return; }
+        if (f.type === 'number') v = v === '' ? 0 : +v;
+        if (f.fix) v = f.fix(v);
+        out[f.k] = v;
+      }
+      if (rec){ confirmSaveEdit(coll, rec, out); return; }
+      db[coll].push(out);
+      save(); closeModal(); renderAll(); toast('Data ditambahkan');
+    };
+    form.addEventListener('submit', submit);
+    $('#btnSave').addEventListener('click', submit);
+  }
+
+  function confirmDelete(coll, id){
+    openModal('Hapus data?', `<p style="margin:0 0 8px">Data ini akan dihapus permanen.</p>`,
+      `<button class="btn" data-close>Batal</button><button class="btn danger" id="btnDel">Hapus</button>`);
+    $('#btnDel').addEventListener('click', () => {
+      db[coll] = db[coll].filter(r => r.id !== id); save(); closeModal(); renderAll(); toast('Data dihapus');
+    });
+  }
+
+  const EYE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const PEN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  const TRASH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
+  const COPY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  const actions = (coll, id) => `<td class="actions"><button class="icon-btn" data-edit="${coll}" data-id="${id}" title="Edit">${PEN}</button><button class="icon-btn del" data-del="${coll}" data-id="${id}" title="Hapus">${TRASH}</button></td>`;
+  const byDateDesc = (a,b) => (b.tanggal||'').localeCompare(a.tanggal||'');
+  const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="empty">${msg}</td></tr>`;
+
+  // ---------- Tables ----------
+  function renderSales(){
+    const q = $('#qSales').value.toLowerCase().trim();
+    const rows = db.sales.filter(r => !q || `${r.sumber} ${r.idPesanan}`.toLowerCase().includes(q)).sort(byDateDesc);
+    const tR = rows.reduce((s,r) => s + (+r.robux||0), 0), tP = rows.reduce((s,r) => s + (+r.pendapatan||0), 0);
+    $('#tblSales').innerHTML = `<thead><tr><th>Tanggal</th><th>Sumber website</th><th>ID pesanan</th><th class="r">Robux</th><th class="r">Pendapatan</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => `<tr>
+        <td>${fmtDate(r.tanggal)}</td><td><span class="pill src">${esc(r.sumber)}</span></td>
+        <td class="num">${esc(r.idPesanan) || '<span class="muted">—</span>'}</td>
+        <td class="r num">${fmtRbx(r.robux)}</td><td class="r num">${fmtRp(r.pendapatan)}</td>${actions('sales', r.id)}</tr>`).join('')
+        : emptyRow(6, q ? 'Tidak ada yang cocok.' : 'Belum ada data sales. Klik “+ Tambah sales”.')}</tbody>
+      ${rows.length ? `<tfoot><tr><td colspan="3">${rows.length} pesanan</td><td class="r num">${fmtRbx(tR)}</td><td class="r num">${fmtRp(tP)}</td><td></td></tr></tfoot>` : ''}`;
+  }
+
+  function renderPayout(){
+    const q = $('#qPayout').value.toLowerCase().trim();
+    const rows = db.payouts.filter(r => !q || (r.username||'').toLowerCase().includes(q)).sort(byDateDesc);
+    const t = rows.reduce((s,r) => s + (+r.payout||0), 0);
+    $('#tblPayout').innerHTML = `<thead><tr><th>Tanggal</th><th>Username</th><th class="r">Payout</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => `<tr><td>${fmtDate(r.tanggal)}</td><td><b>${esc(r.username)}</b></td><td class="r num">${fmtRbx(r.payout)}</td>${actions('payouts', r.id)}</tr>`).join('')
+        : emptyRow(4, q ? 'Tidak ada yang cocok.' : 'Belum ada payout. Klik “+ Tambah payout”.')}</tbody>
+      ${rows.length ? `<tfoot><tr><td colspan="2">${rows.length} transfer</td><td class="r num">${fmtRbx(t)}</td><td></td></tr></tfoot>` : ''}`;
+  }
+
+  const secret = v => v ? `<span class="secret"><span class="val num" data-secret="${esc(v)}">••••••••</span><button class="icon-btn" data-copy="${esc(v)}" title="Salin">${COPY}</button></span>` : '<span class="muted">—</span>';
+  const statusClass = s => { const t = (s||'').toLowerCase(); return t.includes('limit') && t.includes('plus') ? 'st-lp' : t.includes('limit') ? 'st-l' : t.includes('plus') ? 'st-p' : 'Nonaktif'; };
+  function renderAkun(){
+    if (!akunOpen){ $('#tblAkun').innerHTML = ''; return; }
+    const q = $('#qAkun').value.toLowerCase().trim();
+    const rows = db.accounts.filter(r => !q || `${r.username} ${r.email}`.toLowerCase().includes(q))
+      .sort((a,b) => (a.username||'').localeCompare(b.username||''));
+    $('#tblAkun').innerHTML = `<thead><tr><th>Username</th><th>Status</th><th class="r">Sisa limit</th><th>Sandi</th><th>Email</th><th>Sandi email</th><th>Join komunitas</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => `<tr>
+        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${r.sisaLimit ? fmtInt(r.sisaLimit) : '<span class="muted">—</span>'}</td>
+        <td>${secret(r.sandi)}</td><td>${esc(r.email) || '<span class="muted">—</span>'}</td><td>${secret(r.sandiEmail)}</td>
+        <td>${fmtDate(r.tglJoin)}</td>${actions('accounts', r.id)}</tr>`).join('')
+        : emptyRow(8, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
+  }
+
+  // ---------- Dashboard ----------
+  function periodOptions(){
+    const months = [...new Set([...db.sales, ...db.payouts].map(r => monthKey(r.tanggal)).filter(Boolean))];
+    const cur = today().slice(0,7); if (!months.includes(cur)) months.push(cur);
+    months.sort().reverse();
+    const sel = $('#periodSel'), prev = sel.value || 'all';
+    sel.innerHTML = `<option value="all">Semua waktu</option>` + months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+    sel.value = [...sel.options].some(o => o.value === prev) ? prev : 'all';
+  }
+
+  function renderDashboard(){
+    periodOptions();
+    const p = $('#periodSel').value;
+    const inP = r => p === 'all' || monthKey(r.tanggal) === p;
+    const S = db.sales.filter(inP), P = db.payouts.filter(inP);
+    const rbx = S.reduce((s,r) => s + (+r.robux||0), 0);
+    const rev = S.reduce((s,r) => s + (+r.pendapatan||0), 0);
+    const pay = P.reduce((s,r) => s + (+r.payout||0), 0);
+    const allR = db.sales.reduce((s,r) => s + (+r.robux||0), 0), allP = db.payouts.reduce((s,r) => s + (+r.payout||0), 0);
+    const stCount = {}; db.accounts.forEach(a => { if (a.status) stCount[a.status] = (stCount[a.status]||0) + 1; });
+    const stText = Object.entries(stCount).sort((a,b) => b[1]-a[1]).map(([k,n]) => `${n} ${k}`).join(' · ') || '&nbsp;';
+    const sisaLim = db.accounts.reduce((s,a) => s + (+a.sisaLimit||0), 0);
+    const rate = rbx ? rev / rbx : 0;
+
+    $('#kpis').innerHTML = [
+      { l:'Robux terjual', v: fmtRbx(rbx), s: `${fmtInt(S.length)} pesanan`, hl:true },
+      { l:'Pendapatan', v: fmtRp(rev), s: rate ? `≈ ${fmtRp(rate*1000)} / 1.000 Robux` : '&nbsp;' },
+      { l:'Total payout', v: fmtRbx(pay), s: `${fmtInt(P.length)} transfer` },
+      { l:'Saldo belum payout', v: fmtRbx(allR - allP), s: 'semua waktu (terjual − payout)' },
+      { l:'Akun', v: fmtInt(db.accounts.length), s: stText },
+      { l:'Total sisa limit', v: fmtRbx(sisaLim), s: 'Robux, semua akun' },
+    ].map(k => `<div class="card kpi ${k.hl?'hl':''}"><div class="lbl">${k.l}</div><div class="val num">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
+
+    // Target
+    const tm = p === 'all' ? today().slice(0,7) : p;
+    const tR = db.sales.filter(r => monthKey(r.tanggal) === tm).reduce((s,r) => s + (+r.robux||0), 0);
+    const tgt = +db.settings.target || 0, pct = tgt ? Math.min(100, tR / tgt * 100) : 0;
+    $('#targetTitle').textContent = `Target ${monthLabel(tm)}`;
+    $('#targetBox').innerHTML = `<div class="num" style="font-size:26px;font-weight:600">${fmtRbx(tR)} <span style="font-size:14px" class="muted">Robux</span></div>
+      <div class="muted">dari target <span class="num">${fmtRbx(tgt)}</span> Robux</div>
+      <div class="target-bar"><span style="width:${pct}%"></span></div>
+      <div class="row-gap" style="justify-content:space-between"><b class="num">${pct.toFixed(1)}%</b><span class="muted">${tR >= tgt ? 'Target tercapai 🎉' : 'Kurang ' + fmtRbx(tgt - tR) + ' Robux'}</span></div>`;
+
+    // Monthly chart (last 12 months w/ data)
+    const map = {};
+    db.sales.forEach(r => { const k = monthKey(r.tanggal); if(k){ (map[k] ||= {s:0,p:0}).s += +r.robux||0; }});
+    db.payouts.forEach(r => { const k = monthKey(r.tanggal); if(k){ (map[k] ||= {s:0,p:0}).p += +r.payout||0; }});
+    const keys = Object.keys(map).sort().slice(-12);
+    $('#chartMonthly').innerHTML = keys.length ? barChart(keys, map, p) : `<div class="empty">Grafik muncul setelah ada data.</div>`;
+
+    // By source
+    const src = {};
+    S.forEach(r => { const o = src[r.sumber] ||= { n:0, r:0, rev:0 }; o.n++; o.r += +r.robux||0; o.rev += +r.pendapatan||0; });
+    const srcRows = Object.entries(src).sort((a,b) => b[1].r - a[1].r);
+    $('#tblSource').innerHTML = `<thead><tr><th>Sumber</th><th class="r">Pesanan</th><th class="r">Robux</th><th class="r">Pendapatan</th></tr></thead><tbody>${
+      srcRows.length ? srcRows.map(([k,o]) => `<tr><td><span class="pill src">${esc(k)}</span><span class="share"><span style="width:${rbx? o.r/rbx*100 : 0}%"></span></span></td>
+        <td class="r num">${fmtInt(o.n)}</td><td class="r num">${fmtRbx(o.r)}</td><td class="r num">${fmtRp(o.rev)}</td></tr>`).join('')
+      : emptyRow(4, 'Belum ada sales di periode ini.')}</tbody>`;
+
+    // Payout per user
+    const pu = {};
+    P.forEach(r => { const o = pu[r.username] ||= { n:0, t:0 }; o.n++; o.t += +r.payout||0; });
+    const puRows = Object.entries(pu).sort((a,b) => b[1].t - a[1].t);
+    $('#tblPayoutUser').innerHTML = `<thead><tr><th>Username</th><th class="r">Transfer</th><th class="r">Total</th></tr></thead><tbody>${
+      puRows.length ? puRows.map(([k,o]) => `<tr><td><b>${esc(k)}</b></td><td class="r num">${o.n}×</td><td class="r num">${fmtRbx(o.t)}</td></tr>`).join('')
+      : emptyRow(3, 'Belum ada payout di periode ini.')}</tbody>`;
+  }
+
+  function barChart(keys, map, sel){
+    const W = 640, H = 230, padL = 50, padB = 28, padT = 10;
+    const max = Math.max(1, ...keys.map(k => Math.max(map[k].s, map[k].p)));
+    const nice = (() => { const m = Math.pow(10, Math.floor(Math.log10(max))); return Math.ceil(max / m) * m; })();
+    const gw = (W - padL - 8) / keys.length, bw = Math.min(22, gw * 0.32);
+    const y = v => padT + (H - padT - padB) * (1 - v / nice);
+    const short = v => v >= 1e6 ? (v/1e6).toFixed(1).replace('.0','') + 'jt' : v >= 1e3 ? (v/1e3).toFixed(0) + 'rb' : v;
+    let g = '';
+    for (let i = 0; i <= 4; i++){ const v = nice * i / 4, yy = y(v);
+      g += `<line x1="${padL}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${padL-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${short(v)}</text>`; }
+    keys.forEach((k,i) => {
+      const cx = padL + gw * i + gw / 2, dim = sel !== 'all' && sel !== k ? ' opacity="0.35"' : '';
+      const s = map[k].s, p = map[k].p;
+      g += `<g${dim}><rect x="${cx - bw - 1}" y="${y(s)}" width="${bw}" height="${H - padB - y(s)}" rx="3" fill="var(--accent)"><title>${monthLabel(k)} — terjual ${fmtRbx(s)}</title></rect>
+        <rect x="${cx + 1}" y="${y(p)}" width="${bw}" height="${H - padB - y(p)}" rx="3" fill="var(--blue)"><title>${monthLabel(k)} — payout ${fmtRbx(p)}</title></rect>
+        <text x="${cx}" y="${H - 9}" text-anchor="middle" font-size="11" fill="var(--muted)">${monthLabel(k).replace(' 20',' ’')}</text></g>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Robux per bulan">${g}</svg>`;
+  }
+
+  // ---------- Backup ----------
+  function openBackup(){
+    const json = JSON.stringify(db, null, 2);
+    openModal('Backup / Restore', `
+      <p class="muted" style="margin:0 0 10px">Data tersimpan di browser ini saja. Simpan teks backup ini (mis. di Notes / Drive) supaya aman, atau pakai untuk pindah device.</p>
+      <div class="field"><label>Backup (JSON)</label><textarea class="f num" id="bkOut" rows="6" readonly style="font-size:11.5px">${esc(json)}</textarea></div>
+      <div class="row-gap" style="margin-bottom:16px"><button class="btn sm" id="bkCopy">Salin backup</button><button class="btn sm" id="bkDl">Unduh .json</button></div>
+      <div class="field"><label>Restore — tempel backup atau pilih file</label><textarea class="f num" id="bkIn" rows="4" placeholder='{"sales":[...], ...}' style="font-size:11.5px"></textarea></div>
+      <input type="file" id="bkFile" accept=".json,application/json" class="f">
+      <div class="err" id="bkErr" style="margin-top:6px"></div>`,
+      `<button class="btn" data-close>Tutup</button><button class="btn primary" id="bkRestore">Restore (ganti semua data)</button>`);
+    $('#bkCopy').onclick = async () => { try { await navigator.clipboard.writeText(json); toast('Backup disalin'); } catch(e){ $('#bkOut').select(); toast('Tekan Ctrl/Cmd+C untuk menyalin'); } };
+    $('#bkDl').onclick = () => {
+      try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], {type:'application/json'}));
+        a.download = `ornakuy-backup-${today()}.json`; document.body.appendChild(a); a.click(); a.remove(); }
+      catch(e){ toast('Unduhan diblokir — pakai Salin'); }
+    };
+    $('#bkFile').onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => $('#bkIn').value = rd.result; rd.readAsText(f); };
+    $('#bkRestore').onclick = () => {
+      try {
+        const d = JSON.parse($('#bkIn').value);
+        if (!d || !Array.isArray(d.sales) || !Array.isArray(d.payouts) || !Array.isArray(d.accounts)) throw 0;
+        db = Object.assign(blank(), d); normalize(); save(); closeModal(); renderAll(); toast('Data di-restore');
+      } catch(e){ $('#bkErr').textContent = 'Format backup tidak valid.'; }
+    };
+  }
+
+  function openTarget(){
+    openModal('Target Robux per bulan', `<div class="field"><label>Target (Robux)</label><input class="f num" type="number" min="0" id="tgtIn" value="${+db.settings.target||0}"></div>`,
+      `<button class="btn" data-close>Batal</button><button class="btn primary" id="tgtSave">Simpan</button>`);
+    const go = () => { db.settings.target = +$('#tgtIn').value || 0; save(); closeModal(); renderDashboard(); };
+    $('#tgtSave').onclick = go; $('#tgtIn').onkeydown = e => { if (e.key === 'Enter') go(); };
+  }
+
+  // ---------- Tambah cepat: parser teks (dipakai Sales, Payout, Akun) ----------
+  const MONTHS = { januari:1, january:1, jan:1, februari:2, february:2, feb:2, maret:3, march:3, mar:3, april:4, apr:4, mei:5, may:5,
+    juni:6, june:6, jun:6, juli:7, july:7, jul:7, agustus:8, august:8, agus:8, agt:8, agu:8, aug:8, september:9, sept:9, sep:9,
+    oktober:10, october:10, okt:10, oct:10, november:11, nov:11, desember:12, december:12, des:12, dec:12 };
+  const MONTH_RE = Object.keys(MONTHS).sort((a,b) => b.length - a.length).join('|');
+  const SRC_ALIASES = { fb: 'Facebook', facebook: 'Facebook', discord: 'Discord', itemku: 'Itemku', indoblox: 'Indoblox' };
+  const NUM = '(\\d+(?:[.,]\\d+)*)';
+  const MULT = { k:1e3, rb:1e3, ribu:1e3, jt:1e6, juta:1e6 };
+  const MONEY_TOKEN = /^(rp\.?|r\$|r|robux|robus|robuk|rbux|rbx)?[\d.,]+(k|rb|ribu|jt|juta|robux|robus|robuk|rbux|rbx)?$/i;
+  const STATUSES = ['Limit 10k dan Plus', 'Limit 10k', 'Plus'];
+
+  function toNum(s, suf){
+    let n = /^\d{1,3}([.,]\d{3})+$/.test(s) ? +s.replace(/[.,]/g, '') : parseFloat(s.replace(',', '.'));
+    if (suf) n *= MULT[suf.toLowerCase()] || 1;
+    return Math.round(n);
+  }
+  function validDate(y, m, d){
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d ? isoDate(dt) : null;
+  }
+  // tanggal tanpa tahun → tahun ini; kalau jadinya di masa depan, pakai tahun lalu
+  function guessYear(m, d){
+    const y = new Date().getFullYear(), iso = validDate(y, m, d);
+    return iso && iso > today() ? validDate(y - 1, m, d) : iso;
+  }
+  const cutOut = (s, m) => s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length);
+
+  // Ambil tanggal dari teks → [tanggal|null, sisa teks]
+  function takeDate(s){
+    let m, d = null;
+    if ((m = s.match(/\b(hari\s*ini|hr\s*ini|today)\b/i))) d = today();
+    else if ((m = s.match(/\b(kemarin|kemaren|kmrn|kmarin|yesterday)\b/i))) d = daysAgo(1);
+    else if ((m = s.match(/\b(\d{1,2})\s*(hari|hr)\s*(yang\s*|yg\s*)?lalu\b/i))) d = daysAgo(+m[1]);
+    else if ((m = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/))) d = validDate(+m[1], +m[2], +m[3]);
+    else if ((m = s.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4}|\d{2})\b/))) d = validDate(+m[3] < 100 ? 2000 + +m[3] : +m[3], +m[2], +m[1]);
+    else if ((m = s.match(/(?<![\w\/])(\d{1,2})\/(\d{1,2})(?![\w\/])/))) d = guessYear(+m[2], +m[1]);
+    else if ((m = s.match(new RegExp(`\\b(\\d{1,2})\\s*(${MONTH_RE})\\.?(?:\\s+(\\d{4}))?(?![a-z])`, 'i')))) {
+      const mo = MONTHS[m[2].toLowerCase()];
+      d = m[3] ? validDate(+m[3], mo, +m[1]) : guessYear(mo, +m[1]);
+    }
+    return d ? [d, cutOut(s, m)] : [null, s];
+  }
+
+  // Ambil Robux: "3000 robux", "robux 2000", "robus 2000", "r 2000", "r$2000", "3k robux"
+  // bare=true → kalau tidak ada kata robux, angka pertama dianggap Robux (untuk payout)
+  function takeRobux(s, bare){
+    let m;
+    if ((m = s.match(new RegExp(`${NUM}\\s*(k|rb|ribu)?\\s*(?:robux|robus|robuk|rbux|rbx|r\\$)(?![a-z])`, 'i'))) ||
+        (m = s.match(new RegExp(`(?:\\brobux|\\brobus|\\brobuk|\\brbux|\\brbx|r\\$|\\br)\\s*:?\\s*${NUM}\\s*(k|rb|ribu)?(?![a-z])`, 'i'))) ||
+        (bare && (m = s.match(new RegExp(`(?<![\\w@])${NUM}\\s*(k|rb|ribu)?(?![\\w])`, 'i')))))
+      return [toNum(m[1], m[2]), cutOut(s, m)];
+    return ['', s];
+  }
+
+  const cleanTok = t => t.replace(/^[^\w@]+|[^\w]+$/g, '');
+  const atUser = u => u ? (u.startsWith('@') ? u : '@' + u) : '';
+  const noAt = u => (u || '').replace(/^@+/, '');
+  const isEmail = t => /^[^@\s]+@[^@\s]+$/.test(t);
+  function knownSources(){
+    return [...new Set([...Object.values(SRC_ALIASES), ...db.settings.idRules.map(r => r.sumber), ...db.sales.map(s => s.sumber)].filter(Boolean))];
+  }
+
+  // --- Sales ---
+  function parseSales(line){
+    const out = { tanggal: today(), sumber: '', idPesanan: '', robux: '', pendapatan: '', raw: line, warn: [] };
+    let rest = ' ' + line + ' ';
+    const rules = [...db.settings.idRules].filter(r => r.prefix).sort((a,b) => b.prefix.length - a.prefix.length);
+    for (const raw of line.split(/\s+/)){
+      const tok = raw.replace(/^[^\w]+|[^\w]+$/g, '');
+      if (!tok || MONEY_TOKEN.test(tok) || !/^[A-Za-z0-9-]+$/.test(tok)) continue;
+      const rule = rules.find(r => tok.toUpperCase().startsWith(r.prefix.toUpperCase()) && tok.length > r.prefix.length + 3);
+      const looksLikeId = tok.length >= 8 && /[A-Za-z]/.test(tok) && (tok.match(/\d/g) || []).length >= 4;
+      if (rule || looksLikeId){
+        out.idPesanan = tok;
+        if (rule) out.sumber = rule.sumber; else out.warn.push('ID tidak dikenali polanya — isi sumber');
+        rest = rest.replace(tok, ' ');
+        break;
+      }
+    }
+    let d; [d, rest] = takeDate(rest); if (d) out.tanggal = d;
+    if (!out.sumber){
+      const t = rest.toLowerCase();
+      const aliasHit = Object.keys(SRC_ALIASES).find(a => new RegExp(`\\b${a}\\b`).test(t));
+      const nameHit = knownSources().sort((a,b) => b.length - a.length)
+        .find(s => new RegExp(`(^|[^a-z0-9])${s.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`).test(t));
+      out.sumber = nameHit || (aliasHit ? SRC_ALIASES[aliasHit] : '');
+    }
+    [out.robux, rest] = takeRobux(rest);
+    let m;
+    if ((m = rest.match(new RegExp(`\\brp\\.?\\s*${NUM}\\s*(k|rb|ribu|jt|juta)?(?![a-z])`, 'i'))) ||
+        (m = rest.match(new RegExp(`${NUM}\\s*(k|rb|ribu|jt|juta)(?![a-z])`, 'i'))) ||
+        (m = rest.match(new RegExp(`(?<![\\w])${NUM}(?![\\w])`)))) out.pendapatan = toNum(m[1], m[2]);
+    if (out.robux === '') out.warn.push('Robux tidak terdeteksi');
+    if (!out.sumber) out.warn.push('Sumber belum terdeteksi');
+    if (out.idPesanan && db.sales.some(s => (s.idPesanan || '').toUpperCase() === out.idPesanan.toUpperCase())) out.warn.push('ID pesanan ini sudah pernah dicatat');
+    return out;
+  }
+
+  // --- Payout ---
+  const PAYOUT_STOP = new Set(['payout','po','transfer','tf','ke','to','untuk','buat','akun','dari','sebanyak','total','username','user']);
+  function parsePayout(line){
+    const out = { tanggal: today(), username: '', payout: '', raw: line, warn: [] };
+    let rest = ' ' + line + ' ', d;
+    [d, rest] = takeDate(rest); if (d) out.tanggal = d;
+    [out.payout, rest] = takeRobux(rest, true);
+    const toks = rest.split(/\s+/).map(cleanTok).filter(Boolean);
+    const pick = toks.find(t => t.startsWith('@') && t.length > 1) ||
+      toks.find(t => /^[A-Za-z0-9_.]{2,}$/.test(t) && !/^\d+$/.test(t) && !PAYOUT_STOP.has(t.toLowerCase()));
+    out.username = atUser(pick || '');
+    if (!out.username) out.warn.push('Username tidak terdeteksi');
+    if (out.payout === '') out.warn.push('Jumlah payout tidak terdeteksi');
+    return out;
+  }
+
+  // --- Akun ---
+  // Urutan: username sandi ... email sandi-email ... (status, sisa limit, tanggal join bebas posisinya)
+  const KEYWORDISH = /^(hari|hr|kemarin|kemaren|kmrn|kmarin|join|status|li?mi?t|lmt|limt|lmit|plus|pls|pluss|sisa|robux|robus|robuk|rbux|rbx|dan|&|\+)$/i;
+  function detectStatus(s){
+    const t = s.toLowerCase();
+    const lim = /\b(li?mi?t|lmt|limt|lmit|limid|limmit)\b/.test(t) || /\b10\s*k\b/.test(t);
+    const plus = /(^|\s)(plus|pls|pluss|plas|plos|\+)(?=\s|$)/.test(t);
+    return lim && plus ? STATUSES[0] : lim ? STATUSES[1] : plus ? STATUSES[2] : '';
+  }
+  function parseAkun(line){
+    const out = { username: '', status: '', sisaLimit: '', sandi: '', email: '', sandiEmail: '', tglJoin: '', raw: line, warn: [] };
+    const toks = line.trim().split(/\s+/), used = new Set();
+    // username = kata pertama, sandi = kata setelahnya
+    if (toks[0] && !isEmail(toks[0])) { out.username = noAt(toks[0]); used.add(0);
+      if (toks[1] && !isEmail(toks[1])) { out.sandi = toks[1]; used.add(1); } }
+    // email = kata yang ada @-nya, sandi email = kata setelahnya
+    const ei = toks.findIndex((t, i) => !used.has(i) && isEmail(t));
+    if (ei > -1){
+      out.email = toks[ei]; used.add(ei);
+      const nx = toks[ei + 1];
+      if (nx && !used.has(ei + 1) && !KEYWORDISH.test(nx) && !/^\d{1,2}([\/.-]\d{1,2}([\/.-]\d{2,4})?)?$/.test(nx)) { out.sandiEmail = nx; used.add(ei + 1); }
+    }
+    let rest = ' ' + toks.filter((_, i) => !used.has(i)).join(' ') + ' ', m;
+    // sisa limit: "sisa 5000", "sisa limit 5k", atau angka dengan kata robux
+    if ((m = rest.match(new RegExp(`\\bsisa(?:\\s*li?mi?t)?\\s*:?\\s*${NUM}\\s*(k|rb|ribu)?(?:\\s*(?:robux|robus|robuk|rbux|rbx|r\\$))?(?![a-z])`, 'i')))) {
+      out.sisaLimit = toNum(m[1], m[2]); rest = cutOut(rest, m);
+    } else [out.sisaLimit, rest] = takeRobux(rest);
+    // status (boleh salah ketik sedikit)
+    out.status = detectStatus(rest);
+    rest = rest.replace(/\b(status|li?mi?t|lmt|limt|lmit|limid|limmit)\b|\b10\s*k\b|(^|\s)(plus|pls|pluss|plas|plos|\+)(?=\s|$)/gi, ' ');
+    // tanggal join komunitas
+    let d; [d, rest] = takeDate(rest); if (d) out.tglJoin = d;
+    if (!out.username) out.warn.push('Username tidak terdeteksi');
+    if (out.username && db.accounts.some(a => noAt(a.username).toLowerCase() === out.username.toLowerCase())) out.warn.push('Username ini sudah ada di daftar akun');
+    if (!out.status) out.warn.push('Status tidak terdeteksi');
+    return out;
+  }
+
+  // ---------- Tambah cepat: tampilan & simpan ----------
+  const QUICK = {
+    sales: {
+      title: '⚡ Tambah cepat dari teks', noun: 'transaksi', parse: parseSales, extraBtn: '<button class="btn sm" id="btnRules">Pola ID pesanan</button>',
+      ph: 'Satu transaksi per baris. Contoh:\nhari ini OD000000155263605 3000 robux rp 200k\nkemarin GBX-261107-85F8F2 robux 2000 150rb\n1 nov facebook r 1000 75ribu',
+      cols: [ {k:'tanggal',l:'Tanggal',type:'date',req:1,w:140}, {k:'sumber',l:'Sumber website',type:'text',list:'dl-sumber',req:1,w:130},
+              {k:'idPesanan',l:'ID pesanan',type:'text',ph:'(opsional)',w:170}, {k:'robux',l:'Robux',type:'number',req:1,w:100},
+              {k:'pendapatan',l:'Pendapatan (Rp)',type:'number',w:120} ],
+      summary: rows => [['Total Robux', fmtInt(rows.reduce((s,r) => s + (+r.robux||0), 0))], ['Total pendapatan', fmtRp(rows.reduce((s,r) => s + (+r.pendapatan||0), 0))]],
+      fix: r => r,
+    },
+    payouts: {
+      title: '⚡ Tambah cepat payout', noun: 'payout', parse: parsePayout,
+      ph: 'Satu payout per baris. Contoh:\nhari ini aji 3000 robux\nkemarin @budi_rbx robus 1500\n5 nov ornakuy r 2000',
+      cols: [ {k:'tanggal',l:'Tanggal',type:'date',req:1,w:140}, {k:'username',l:'Username',type:'text',list:'dl-username',req:1,w:170},
+              {k:'payout',l:'Payout (Robux)',type:'number',req:1,w:120} ],
+      summary: rows => [['Total payout (Robux)', fmtInt(rows.reduce((s,r) => s + (+r.payout||0), 0))]],
+      fix: r => ({ ...r, username: atUser(String(r.username).trim()) }),
+    },
+    accounts: {
+      title: '⚡ Tambah cepat akun', noun: 'akun', parse: parseAkun,
+      ph: 'Satu akun per baris: username sandi, lalu email sandi-email (status, sisa limit & tanggal join bebas posisinya). Contoh:\naji 4j1012569 aji123@gmail.com sandiEmail1 limit 10k plus sisa 5000 robux hari ini\nbudi b8udi99 budi@yahoo.co.id passBudi plus 14 nov 2026',
+      cols: [ {k:'username',l:'Username',type:'text',req:1,w:130}, {k:'status',l:'Status',type:'text',list:'dl-status',w:160},
+              {k:'sisaLimit',l:'Sisa limit',type:'number',w:100}, {k:'sandi',l:'Sandi',type:'text',w:130}, {k:'email',l:'Email',type:'text',w:190},
+              {k:'sandiEmail',l:'Sandi email',type:'text',w:130}, {k:'tglJoin',l:'Join komunitas',type:'date',w:140} ],
+      summary: rows => [['Total sisa limit (Robux)', fmtInt(rows.reduce((s,r) => s + (+r.sisaLimit||0), 0))]],
+      fix: r => ({ ...r, username: noAt(String(r.username).trim()) }),
+    },
+  };
+  const quickRows = { sales: [], payouts: [], accounts: [] };
+  const cellBad = (c, v) => c.req && (c.type === 'number' ? !(+v > 0) : !String(v ?? '').trim());
+  const rowOk = (coll, r) => QUICK[coll].cols.every(c => !cellBad(c, r[c.k]));
+  const footText = coll => { const rows = quickRows[coll], ok = rows.filter(r => rowOk(coll, r)).length;
+    return `${ok} dari ${rows.length} baris siap disimpan${ok < rows.length ? ' — lengkapi kolom merah' : ''}. Semua kolom bisa diedit sebelum disimpan.`; };
+
+  function mountQuick(coll){
+    const q = QUICK[coll], box = document.querySelector(`[data-quick="${coll}"]`);
+    box.innerHTML = `<div class="hd"><h3>${q.title}</h3>${q.extraBtn || ''}</div>
+      <div class="bd"><textarea class="f" rows="3" data-qin placeholder="${esc(q.ph)}"></textarea>
+        <div class="row-gap" style="margin-top:10px"><button class="btn primary" data-qparse>Baca teks</button><span class="muted" style="font-size:12.5px">atau Ctrl/Cmd + Enter</span></div>
+        <div data-qprev></div></div>`;
+    const ta = box.querySelector('[data-qin]'), prev = box.querySelector('[data-qprev]');
+    const run = () => {
+      const lines = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+      if (!lines.length){ toast('Tulis datanya dulu'); return; }
+      quickRows[coll] = lines.map(q.parse); renderQuick(coll);
+    };
+    box.querySelector('[data-qparse]').onclick = run;
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); } });
+    prev.addEventListener('input', e => {
+      const el = e.target.closest('[data-q]'); if (!el) return;
+      const r = quickRows[coll][+el.dataset.q], c = q.cols.find(c => c.k === el.dataset.k);
+      r[c.k] = c.type === 'number' ? (el.value === '' ? '' : +el.value) : el.value;
+      el.classList.toggle('invalid', cellBad(c, r[c.k]));
+      const btn = prev.querySelector('[data-qsave]'), all = quickRows[coll].every(r => rowOk(coll, r));
+      btn.disabled = !all; btn.style.opacity = all ? 1 : .5; btn.style.cursor = all ? 'pointer' : 'not-allowed';
+      prev.querySelector('.qfoot .muted').textContent = footText(coll);
+    });
+    prev.addEventListener('click', e => {
+      const b = e.target.closest('[data-qdel]'); if (!b) return;
+      quickRows[coll].splice(+b.dataset.qdel, 1); renderQuick(coll);
+    });
+  }
+
+  function renderQuick(coll){
+    const q = QUICK[coll], rows = quickRows[coll], box = document.querySelector(`[data-quick="${coll}"]`), prev = box.querySelector('[data-qprev]');
+    if (!rows.length){ prev.innerHTML = ''; return; }
+    const all = rows.every(r => rowOk(coll, r));
+    prev.innerHTML = `<div class="qtable"><table>
+      <thead><tr>${q.cols.map(c => `<th>${c.l}</th>`).join('')}<th>Teks asli</th><th></th></tr></thead>
+      <tbody>${rows.map((r,i) => `<tr>${q.cols.map(c => `<td style="min-width:${c.w}px"><input class="f ${c.type==='number'?'num':''} ${cellBad(c, r[c.k])?'invalid':''}"
+          type="${c.type}" data-q="${i}" data-k="${c.k}" value="${esc(r[c.k])}" ${c.list?`list="${c.list}"`:''} ${c.ph?`placeholder="${c.ph}"`:''} ${c.type==='number'?'min="0"':''}></td>`).join('')}
+        <td class="raw">${esc(r.raw)}${r.warn.map(w => `<span class="warn">⚠ ${esc(w)}</span>`).join('')}</td>
+        <td class="actions"><button class="icon-btn del" data-qdel="${i}" title="Buang baris">✕</button></td></tr>`).join('')}</tbody></table></div>
+      <div class="qfoot"><span class="muted">${footText(coll)}</span>
+        <div class="row-gap"><button class="btn" data-qcancel>Batal</button><button class="btn primary" data-qsave ${all ? '' : 'disabled style="opacity:.5;cursor:not-allowed"'}>Simpan ${rows.length} ${q.noun}</button></div></div>`;
+    prev.querySelector('[data-qcancel]').onclick = () => {
+      openModal('Batalkan?', `<p style="margin:0">Hasil baca teks akan dibuang dan tidak disimpan.</p>`,
+        `<button class="btn" data-close>Tidak</button><button class="btn danger" id="qYakinBatal">Yakin, batalkan</button>`);
+      $('#qYakinBatal').onclick = () => { quickRows[coll] = []; renderQuick(coll); closeModal(); };
+    };
+    prev.querySelector('[data-qsave]').onclick = () => {
+      if (!quickRows[coll].every(r => rowOk(coll, r))) return;
+      const rs = quickRows[coll].map(q.fix);
+      const sum = [[q.noun[0].toUpperCase() + q.noun.slice(1), rs.length], ...q.summary(rs)];
+      openModal(`Simpan ${rs.length} ${q.noun}?`, `<div class="diff">${sum.map(([a,b]) => `<div><span class="muted">${a}</span><span class="num">${b}</span></div>`).join('')}</div>`,
+        `<button class="btn" data-close>Batal</button><button class="btn primary" id="qYakinSave">Yakin, simpan</button>`);
+      $('#qYakinSave').onclick = () => {
+        rs.forEach(r => { const rec = { id: uid() };
+          q.cols.forEach(c => rec[c.k] = c.type === 'number' ? (+r[c.k] || 0) : String(r[c.k] ?? '').trim());
+          db[coll].push(rec); });
+        quickRows[coll] = []; box.querySelector('[data-qin]').value = '';
+        save(); closeModal(); renderAll(); toast(`${rs.length} ${q.noun} disimpan`);
+      };
+    };
+  }
+  Object.keys(QUICK).forEach(mountQuick);
+
+  // ---------- Pola ID pesanan ----------
+  function openRules(){
+    const rowHtml = r => `<div class="rule-row"><input class="f num" data-r="prefix" placeholder="Awalan, mis. OD" value="${esc(r.prefix)}"><input class="f" data-r="sumber" placeholder="Website, mis. Itemku" value="${esc(r.sumber)}" list="dl-sumber"><button class="icon-btn del" data-rdel title="Hapus">${TRASH}</button></div>`;
+    openModal('Pola ID pesanan', `<p class="muted" style="margin:0 0 12px">ID pesanan yang diawali teks ini otomatis diisi sumbernya. Facebook &amp; Discord tidak perlu pola — cukup tulis “facebook”/“fb” atau “discord” di teks.</p>
+      <div id="rulesList">${db.settings.idRules.map(rowHtml).join('')}</div>
+      <button class="btn sm" id="ruleAdd">+ Tambah pola</button>`,
+      `<button class="btn" data-close>Batal</button><button class="btn primary" id="rulesSave">Simpan</button>`);
+    const list = $('#rulesList');
+    $('#ruleAdd').onclick = () => list.insertAdjacentHTML('beforeend', rowHtml({prefix:'', sumber:''}));
+    list.addEventListener('click', e => { const b = e.target.closest('[data-rdel]'); if (b) b.parentElement.remove(); });
+    $('#rulesSave').onclick = () => {
+      db.settings.idRules = [...list.querySelectorAll('.rule-row')].map(r => ({ prefix: r.querySelector('[data-r=prefix]').value.trim(), sumber: r.querySelector('[data-r=sumber]').value.trim() }))
+        .filter(r => r.prefix && r.sumber);
+      save(); closeModal(); toast('Pola disimpan');
+      if (quickRows.sales.length){ quickRows.sales = quickRows.sales.map(r => parseSales(r.raw)); renderQuick('sales'); }
+    };
+  }
+  $('#btnRules').onclick = openRules;
+
+  // ---------- Kunci halaman & tab Akun ----------
+  function sha256(str){
+    const rr = (v, n) => (v >>> n) | (v << (32 - n));
+    let H = [], K = [], p = 2, c = 0;
+    const frac = x => ((x - Math.floor(x)) * 4294967296) | 0;
+    while (c < 64){ let prime = true; for (let d = 2; d * d <= p; d++) if (p % d === 0){ prime = false; break; }
+      if (prime){ if (c < 8) H[c] = frac(Math.pow(p, 1/2)); K[c] = frac(Math.pow(p, 1/3)); c++; } p++; }
+    const bytes = new TextEncoder().encode(str), l = bytes.length, words = [];
+    for (let i = 0; i < l; i++) words[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+    words[l >> 2] |= 0x80 << (24 - (l % 4) * 8);
+    const nw = (((l + 8) >> 6) << 4) + 16;
+    for (let i = 0; i < nw; i++) words[i] = words[i] | 0;
+    words[nw - 1] = l * 8;
+    for (let j = 0; j < nw; j += 16){
+      const w = words.slice(j, j + 16); let [a, b, cc, d, e, f, g, h] = H;
+      for (let i = 0; i < 64; i++){
+        if (i >= 16){ const w15 = w[i-15], w2 = w[i-2]; w[i] = (w[i-16] + (rr(w15,7) ^ rr(w15,18) ^ (w15 >>> 3)) + w[i-7] + (rr(w2,17) ^ rr(w2,19) ^ (w2 >>> 10))) | 0; }
+        const t1 = (h + (rr(e,6) ^ rr(e,11) ^ rr(e,25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+        const t2 = ((rr(a,2) ^ rr(a,13) ^ rr(a,22)) + ((a & b) ^ (a & cc) ^ (b & cc))) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = cc; cc = b; b = a; a = (t1 + t2) | 0;
+      }
+      H = [a, b, cc, d, e, f, g, h].map((v, i) => (v + H[i]) | 0);
+    }
+    return H.map(v => (v >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+  const HASH_MAIN = '544587b56e6ff96f1a4f498c35b388985bc0a3014f38368637b64e4935e1ccab';
+  const HASH_AKUN = '3ad4aed648da15bee6d21a78e586d75a06fa41bc3e324ec71040fb88d75dea8f';
+  const checkPw = (pw, hash) => sha256('ornakuy:' + pw) === hash;
+  let akunOpen = false;
+
+  function setupLock(onOpen){
+    const form = $('#lockForm'), inp = $('#lockIn');
+    setTimeout(() => inp.focus(), 50);
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      if (checkPw(inp.value, HASH_MAIN)){
+        $('#lock').remove(); $('#app').hidden = false; onOpen();
+      } else {
+        $('#lockErr').textContent = 'Sandi salah.'; inp.value = '';
+        form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
+      }
+    });
+  }
+
+  // Tab Akun: harus diklik 3x cepat, lalu sandi
+  let akunClicks = [];
+  $('#tabs a[data-view="akun"]').addEventListener('click', e => {
+    e.preventDefault();
+    if (akunOpen) return;
+    const now = Date.now();
+    akunClicks = akunClicks.filter(t => now - t < 700); akunClicks.push(now);
+    if (akunClicks.length < 3) return;
+    akunClicks = [];
+    openModal('Buka tab Akun', `<form id="akunForm"><div class="field"><label>Sandi tab Akun</label>
+      <input class="f num" type="password" inputmode="numeric" id="akunPw" autocomplete="off"></div><div class="err" id="akunErr"></div><button hidden></button></form>`,
+      `<button class="btn" data-close>Batal</button><button class="btn primary" id="akunGo">Buka</button>`);
+    const go = ev => {
+      ev && ev.preventDefault();
+      if (checkPw($('#akunPw').value, HASH_AKUN)){ akunOpen = true; closeModal(); location.hash = 'akun'; route(); renderAkun(); }
+      else { $('#akunErr').textContent = 'Sandi salah.'; $('#akunPw').value = ''; $('#akunPw').focus(); }
+    };
+    $('#akunForm').addEventListener('submit', go); $('#akunGo').onclick = go;
+  });
+  function lockAkun(){
+    akunOpen = false;
+    $('#tblAkun').innerHTML = '';
+    quickRows.accounts = []; renderQuick('accounts');
+    const ta = document.querySelector('[data-quick="accounts"] [data-qin]'); if (ta) ta.value = '';
+  }
+
+  // ---------- Sinkron Google Sheets (Apps Script Web App) ----------
+  const SYNC_KEY = 'ornakuy-sheet-v1';
+  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1jxorIFEuOVPtn8CpYvq-TO8aOfSTm54a_dsJHF9NoSw/edit';
+  let sync = { url: '', key: '' };
+  try { sync = Object.assign(sync, JSON.parse(localStorage.getItem(SYNC_KEY) || '{}')); } catch(e){}
+  const st = { state: 'off', msg: '', at: null, pending: false, trusted: false, timer: null };
+  const connected = () => !!(sync.url && sync.key);
+  const TABLE_KEYS = ['sales','payouts','accounts','snapshots'];
+  const fmtTime = d => d ? d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+
+  function setSync(state, msg){
+    st.state = state; st.msg = msg || '';
+    const b = $('#btnSync'), dot = { off:'var(--muted)', ok:'var(--accent)', saving:'var(--amber)', error:'var(--red)' }[state];
+    const label = { off:'Spreadsheet: belum tersambung', ok: st.at ? `Tersimpan ${fmtTime(st.at)}` : 'Spreadsheet', saving:'Menyimpan…', error:'Sinkron gagal' }[state];
+    b.innerHTML = `<i style="width:8px;height:8px;border-radius:50%;background:${dot};display:inline-block"></i>${label}`;
+    b.title = st.msg;
+    const s = $('#syncStatus'); if (s) s.textContent = statusText();
+  }
+  function statusText(){
+    if (!connected()) return 'Belum tersambung. Isi Web App URL dan kunci, lalu Simpan & tes.';
+    if (st.state === 'error') return 'Gagal: ' + st.msg;
+    if (st.state === 'saving') return 'Menyimpan ke spreadsheet…';
+    return `Tersambung: data dibaca dari & disimpan ke spreadsheet otomatis, dicek ulang tiap 30 detik.${st.at ? ' Terakhir sinkron ' + fmtTime(st.at) + '.' : ''}${st.msg ? ' ' + st.msg : ''}`;
+  }
+  const netErr = e => (e instanceof TypeError)
+    ? 'Tidak bisa terhubung. Di pratinjau Claude koneksi keluar memang diblokir — sinkron aktif setelah halaman ini di GitHub. Kalau sudah di GitHub, cek Web App URL & akses "Anyone".'
+    : (e.message || 'Error');
+
+  async function apiGet(){
+    const r = await fetch(sync.url + (sync.url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(sync.key));
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Gagal membaca'); return j.data;
+  }
+  async function apiSave(){
+    const r = await fetch(sync.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ key: sync.key, action: 'saveAll', data: db }) });
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Gagal menyimpan'); return j;
+  }
+  const remoteEmpty = d => TABLE_KEYS.every(k => !(d[k] || []).length);
+  const tablesJson = d => JSON.stringify(TABLE_KEYS.map(k => d[k] || []));
+
+  function applyRemote(d){
+    db = { ...blank(), ...db, sales: d.sales || [], payouts: d.payouts || [], accounts: d.accounts || [],
+      snapshots: (d.snapshots && d.snapshots.length) ? d.snapshots : db.snapshots, settings: Object.assign({}, db.settings, d.settings || {}) };
+    normalize(); persistLocal(); renderAll();
+  }
+  // Ambil dari spreadsheet. auto=true → otomatis (tidak menimpa data lokal kalau sheet masih kosong)
+  async function pull(auto){
+    if (!connected()) return;
+    try {
+      const d = await apiGet(); st.at = new Date();
+      if (remoteEmpty(d) && TABLE_KEYS.some(k => db[k].length) && auto && !st.trusted){
+        setSync('ok', 'Spreadsheet masih kosong — klik "Kirim semua data" untuk mengisinya.'); return;
+      }
+      st.trusted = true;
+      if (tablesJson(d) !== tablesJson(db)) applyRemote(d);
+      setSync('ok');
+    } catch(e){ setSync('error', netErr(e)); }
+  }
+  async function push(){
+    if (!connected()) return;
+    clearTimeout(st.timer); st.pending = true; setSync('saving');
+    try { await apiSave(); st.at = new Date(); st.trusted = true; st.pending = false; setSync('ok'); }
+    catch(e){ st.pending = false; setSync('error', netErr(e)); }
+  }
+  // setiap perubahan lokal → kirim otomatis (hanya setelah data spreadsheet pernah dimuat / dikirim di sesi ini)
+  function schedulePush(){
+    if (!connected() || !st.trusted) return;
+    st.pending = true; setSync('saving'); clearTimeout(st.timer); st.timer = setTimeout(push, 1200);
+  }
+  setInterval(() => {
+    if (connected() && !st.pending && !$('#app').hidden && !overlay.classList.contains('open') && document.visibilityState === 'visible') pull(true);
+  }, 30000);
+
+  function openSync(){
+    openModal('Google Sheets sebagai master data', `
+      <p class="muted" style="margin:0 0 12px" id="syncStatus">${esc(statusText())}</p>
+      <div class="field"><label>Web App URL</label><input class="f" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(sync.url)}"></div>
+      <div class="field"><label>Kata sandi (kunci)</label><div class="pw-wrap"><input class="f" type="password" id="syncKey" value="${esc(sync.key)}" autocomplete="off"><button type="button" class="icon-btn" id="syncEye">${EYE}</button></div></div>
+      <div class="row-gap" style="justify-content:flex-end;margin-bottom:8px">
+        <button class="btn primary" id="syncTest">Simpan &amp; tes</button><button class="btn" id="syncLoad">Muat dari spreadsheet</button></div>
+      <div class="row-gap" style="justify-content:flex-end;margin-bottom:8px">
+        <button class="btn" id="syncSend">Kirim semua data</button><button class="btn" id="syncCopy">Salin script</button></div>
+      <div class="row-gap" style="justify-content:flex-end">
+        <a class="btn" href="${SHEET_URL}" target="_blank" rel="noopener">Buka spreadsheet ↗</a><button class="btn" id="syncOff">Putuskan</button></div>
+      <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600">Cara menyambungkan (sekali saja)</summary>
+        <ol class="muted" style="padding-left:18px;margin:8px 0 0;font-size:12.5px">
+          <li>Klik <b>Salin script</b>. Buka spreadsheet → Extensions → Apps Script, hapus isinya, tempel.</li>
+          <li>Ganti <code>GANTI_DENGAN_KUNCI_RAHASIAMU</code> dengan kunci buatanmu, simpan.</li>
+          <li>Deploy → New deployment → Web app. Execute as: <b>Me</b>, Who has access: <b>Anyone</b>. Izinkan aksesnya.</li>
+          <li>Salin Web App URL (berakhiran <code>/exec</code>) ke sini, isi kunci yang sama, klik <b>Simpan &amp; tes</b>.</li>
+        </ol></details>`, `<button class="btn" data-close>Tutup</button>`);
+    $('#syncEye').onclick = () => { const i = $('#syncKey'); i.type = i.type === 'password' ? 'text' : 'password'; };
+    const keep = () => { sync.url = $('#syncUrl').value.trim(); sync.key = $('#syncKey').value; try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(e){} };
+    $('#syncTest').onclick = async () => {
+      keep(); if (!connected()){ $('#syncStatus').textContent = 'Isi Web App URL dan kunci dulu.'; return; }
+      st.trusted = false; $('#syncStatus').textContent = 'Mengetes sambungan…';
+      await pull(true); $('#syncStatus').textContent = statusText();
+    };
+    const confirmThen = (title, text, fn) => {
+      keep(); if (!connected()){ $('#syncStatus').textContent = 'Isi Web App URL dan kunci dulu.'; return; }
+      openModal(title, `<p style="margin:0">${text}</p>`, `<button class="btn" id="cfBack">Batal</button><button class="btn primary" id="cfGo">Yakin</button>`);
+      $('#cfBack').onclick = openSync;
+      $('#cfGo').onclick = async () => { $('#cfGo').disabled = true; $('#cfGo').textContent = 'Memproses…'; await fn(); openSync(); };
+    };
+    $('#syncLoad').onclick = () => confirmThen('Muat dari spreadsheet?', 'Data di halaman ini akan <b>diganti</b> dengan isi spreadsheet.',
+      async () => { try { const d = await apiGet(); st.trusted = true; st.at = new Date(); applyRemote(d); setSync('ok'); toast('Data dimuat dari spreadsheet'); } catch(e){ setSync('error', netErr(e)); } });
+    $('#syncSend').onclick = () => confirmThen('Kirim semua data?', 'Isi spreadsheet akan <b>ditimpa</b> dengan semua data di halaman ini.',
+      async () => { await push(); if (st.state === 'ok') toast('Semua data terkirim'); });
+    $('#syncCopy').onclick = async () => {
+      const code = $('#gsCode').textContent.trim();
+      try { await navigator.clipboard.writeText(code); toast('Script disalin'); }
+      catch(e){ openModal('Script Apps Script', `<textarea class="f num" rows="14" style="font-size:11px" readonly>${esc(code)}</textarea><p class="muted" style="font-size:12px">Tekan Ctrl/Cmd+A lalu Ctrl/Cmd+C.</p>`, `<button class="btn" id="cfBack2">Kembali</button>`); $('#cfBack2').onclick = openSync; }
+    };
+    $('#syncOff').onclick = () => {
+      sync = { url: '', key: '' }; try { localStorage.removeItem(SYNC_KEY); } catch(e){}
+      st.trusted = false; st.at = null; setSync('off'); openSync(); toast('Sambungan diputus');
+    };
+  }
+
+  // ---------- Saldo grup Roblox (acuan dari screenshot) ----------
+  const latestSnap = () => [...db.snapshots].sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''))[0];
+  const daysSince = d => Math.floor((new Date(today() + 'T00:00') - new Date(d + 'T00:00')) / 864e5);
+  const REMIND_DAYS = 3;
+
+  function renderSaldo(){
+    const s = latestSnap(), box = $('#saldoCard'), bar = $('#remindBar');
+    const age = s ? daysSince(s.tanggal) : null;
+    const remind = !s || age >= REMIND_DAYS;
+    bar.hidden = !remind;
+    if (remind) bar.innerHTML = `📸 ${s ? `Sudah ${age} hari sejak screenshot saldo grup terakhir (${fmtDate(s.tanggal)}).` : 'Belum ada screenshot saldo grup.'} Waktunya update. <button class="btn sm" data-saldo-shot style="margin-left:8px">Update sekarang</button>`;
+    if (!s){ box.innerHTML = `<div class="hd"><h3>Saldo grup ORNA</h3><button class="btn sm primary" data-saldo-shot>Update dari screenshot</button></div><div class="bd muted">Belum ada data saldo.</div>`; return; }
+    const after = db.payouts.filter(p => (p.tanggal||'') > s.tanggal).reduce((t,p) => t + (+p.payout||0), 0);
+    const nextDate = (() => { const d = new Date(s.tanggal + 'T00:00'); d.setDate(d.getDate() + REMIND_DAYS); return isoDate(d); })();
+    const tile = (l, v, sub, hl) => `<div class="kpi ${hl?'hl':''}" style="border:1px solid var(--line);border-radius:12px"><div class="lbl">${l}</div><div class="val num">${v}</div><div class="sub">${sub}</div></div>`;
+    box.innerHTML = `<div class="hd"><h3>Saldo grup ORNA <span class="muted" style="font-weight:500">· acuan screenshot ${fmtDate(s.tanggal)}</span></h3>
+        <div class="row-gap"><button class="btn sm primary" data-saldo-shot>Update dari screenshot</button><button class="btn sm" data-saldo-manual>Isi manual</button><button class="btn sm" data-saldo-hist>Riwayat</button></div></div>
+      <div class="bd"><div class="kpis" style="margin:0">
+        ${tile('Community Funds', fmtInt(s.funds), 'di screenshot', true)}
+        ${tile('Pending Robux', fmtInt(s.pending), 'di screenshot')}
+        ${tile('Community Revenue Payouts', fmtInt(Math.abs(+s.revenuePayouts||0)), 'di screenshot')}
+        ${tile('Payout tercatat sesudahnya', fmtInt(after), `setelah ${fmtDate(s.tanggal)}`)}
+        ${tile('Perkiraan funds sekarang', fmtInt((+s.funds||0) - after), 'funds acuan − payout sesudahnya')}
+      </div><p class="muted" style="font-size:12px;margin:10px 0 0">Angka di atas hanya acuan dasar. Pengingat screenshot baru tiap ${REMIND_DAYS} hari (berikutnya ${fmtDate(nextDate)}).</p></div>`;
+  }
+
+  function loadOcr(){
+    return new Promise((res, rej) => {
+      if (window.Tesseract) return res(window.Tesseract);
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      sc.onload = () => window.Tesseract ? res(window.Tesseract) : rej(new Error('OCR tidak tersedia'));
+      sc.onerror = () => rej(new Error('OCR tidak bisa dimuat'));
+      document.head.appendChild(sc);
+    });
+  }
+  function parseSaldoText(text){
+    const t = text.replace(/\r/g, ''), n = s => +String(s).replace(/[^\d]/g, '');
+    const out = {}; let m;
+    if ((m = t.match(/community\s*funds?\s*:?[^\d\n]{0,8}(\d[\d.,]*)/i))) out.funds = n(m[1]);
+    if ((m = t.match(/pending\s*robux[^\d\n]{0,8}(\d[\d.,]*)/i))) out.pending = n(m[1]);
+    if ((m = t.match(/revenue\s*payouts?[^\d\n]{0,8}(\d[\d.,]*)/i))) out.revenuePayouts = n(m[1]);
+    return out;
+  }
+
+  let pasteHandler = null;
+  function openSaldo(mode, draft){
+    const s = latestSnap() || {};
+    const v = draft || { tanggal: today(), funds: s.funds ?? '', pending: s.pending ?? '', revenuePayouts: Math.abs(+s.revenuePayouts || 0) || '' };
+    const shot = mode === 'shot';
+    openModal(shot ? 'Update saldo dari screenshot' : 'Isi saldo grup manual', `
+      ${shot ? `<div id="dropZone" style="border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;margin-bottom:12px;cursor:pointer">
+        <b>Tempel (Ctrl/Cmd+V)</b>, seret, atau klik untuk pilih screenshot halaman Revenue grup
+        <input type="file" accept="image/*" id="shotFile" hidden><div id="shotPrev" style="margin-top:10px"></div>
+        <div class="muted" id="ocrMsg" style="font-size:12.5px;margin-top:6px"></div></div>` : ''}
+      <div class="field"><label>Tanggal screenshot</label><input class="f" type="date" id="sdTgl" value="${esc(v.tanggal)}"></div>
+      <div class="field"><label>Community Funds</label><input class="f num" type="number" min="0" id="sdFunds" value="${esc(v.funds)}"></div>
+      <div class="field"><label>Pending Robux</label><input class="f num" type="number" min="0" id="sdPending" value="${esc(v.pending)}"></div>
+      <div class="field"><label>Community Revenue Payouts</label><input class="f num" type="number" min="0" id="sdRev" value="${esc(v.revenuePayouts)}"></div>
+      <div class="err" id="sdErr"></div>`,
+      `<button class="btn" data-close>Batal</button><button class="btn primary" id="sdSave">Simpan</button>`);
+    if (pasteHandler){ document.removeEventListener('paste', pasteHandler); pasteHandler = null; }
+    if (shot){
+      const dz = $('#dropZone'), fi = $('#shotFile');
+      const handle = async file => {
+        if (!file || !file.type.startsWith('image/')) return;
+        $('#shotPrev').innerHTML = `<img src="${URL.createObjectURL(file)}" style="max-width:100%;max-height:160px;border-radius:8px">`;
+        $('#ocrMsg').textContent = 'Membaca angka dari screenshot…';
+        try {
+          const T = await loadOcr();
+          const { data } = await T.recognize(file, 'eng');
+          const r = parseSaldoText(data.text || '');
+          if (r.funds != null) $('#sdFunds').value = r.funds;
+          if (r.pending != null) $('#sdPending').value = r.pending;
+          if (r.revenuePayouts != null) $('#sdRev').value = r.revenuePayouts;
+          $('#sdTgl').value = today();
+          const got = Object.keys(r).length;
+          $('#ocrMsg').textContent = got === 3 ? '✓ Semua angka terbaca — cek lagi sebelum simpan.' : `${got} dari 3 angka terbaca — lengkapi yang kosong secara manual.`;
+        } catch(e){
+          $('#ocrMsg').textContent = 'Baca otomatis tidak bisa di sini (di pratinjau Claude akses OCR diblokir; jalan setelah di GitHub). Isi angkanya manual dari screenshot.';
+        }
+      };
+      dz.onclick = e => { if (!e.target.closest('img')) fi.click(); };
+      fi.onclick = e => e.stopPropagation();
+      fi.onchange = () => handle(fi.files[0]);
+      dz.ondragover = e => { e.preventDefault(); dz.style.borderColor = 'var(--accent)'; };
+      dz.ondragleave = () => dz.style.borderColor = 'var(--line)';
+      dz.ondrop = e => { e.preventDefault(); dz.style.borderColor = 'var(--line)'; handle(e.dataTransfer.files[0]); };
+      pasteHandler = e => {
+        if (!document.getElementById('dropZone')) return;
+        const it = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+        if (it) handle(it.getAsFile());
+      };
+      document.addEventListener('paste', pasteHandler);
+    }
+    $('#sdSave').onclick = () => {
+      const nv = { tanggal: $('#sdTgl').value, funds: +$('#sdFunds').value || 0, pending: +$('#sdPending').value || 0, revenuePayouts: +$('#sdRev').value || 0 };
+      if (!nv.tanggal || $('#sdFunds').value === ''){ $('#sdErr').textContent = 'Tanggal dan Community Funds wajib diisi.'; return; }
+      const row = (l, a, b) => `<div><span class="muted">${l}</span><span>${a === '' || a == null ? '' : `<span class="old">${fmtInt(a)}</span> → `}<span class="new">${fmtInt(b)}</span></span></div>`;
+      openModal('Simpan saldo baru?', `<p style="margin:0 0 8px">Jadi acuan baru per ${fmtDate(nv.tanggal)}:</p><div class="diff">
+        ${row('Funds', s.funds, nv.funds)}${row('Pending', s.pending, nv.pending)}${row('Rev. Payouts', s.revenuePayouts == null ? '' : Math.abs(s.revenuePayouts), nv.revenuePayouts)}</div>`,
+        `<button class="btn" id="sdBack">Batal</button><button class="btn primary" id="sdYakin">Yakin, simpan</button>`);
+      $('#sdBack').onclick = () => openSaldo(mode, nv);
+      $('#sdYakin').onclick = () => { db.snapshots.push({ id: uid(), ...nv }); save(); closeModal(); renderAll(); toast('Saldo grup diperbarui'); };
+    };
+  }
+
+  function openSaldoHist(){
+    const rows = [...db.snapshots].sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
+    openModal('Riwayat saldo grup', `<div class="table-wrap" style="border:1px solid var(--line);border-radius:10px"><table>
+      <thead><tr><th>Tanggal</th><th class="r">Funds</th><th class="r">Pending</th><th class="r">Rev. Payouts</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map(r => `<tr><td>${fmtDate(r.tanggal)}</td><td class="r num">${fmtInt(r.funds)}</td><td class="r num">${fmtInt(r.pending)}</td><td class="r num">${fmtInt(Math.abs(+r.revenuePayouts||0))}</td>
+        <td class="actions"><button class="icon-btn del" data-snapdel="${r.id}" title="Hapus">${TRASH}</button></td></tr>`).join('') : emptyRow(5, 'Belum ada riwayat.')}</tbody></table></div>`,
+      `<button class="btn" data-close>Tutup</button>`);
+    document.querySelectorAll('[data-snapdel]').forEach(b => b.onclick = () => {
+      const id = b.dataset.snapdel;
+      openModal('Hapus data saldo ini?', `<p style="margin:0">Data saldo ini akan dihapus permanen.</p>`, `<button class="btn" id="snBack">Batal</button><button class="btn danger" id="snGo">Yakin, hapus</button>`);
+      $('#snBack').onclick = openSaldoHist;
+      $('#snGo').onclick = () => { db.snapshots = db.snapshots.filter(x => x.id !== id); save(); renderAll(); openSaldoHist(); };
+    });
+  }
+  document.addEventListener('click', e => {
+    if (e.target.closest('[data-saldo-shot]')) openSaldo('shot');
+    else if (e.target.closest('[data-saldo-manual]')) openSaldo('manual');
+    else if (e.target.closest('[data-saldo-hist]')) openSaldoHist();
+  });
+  $('#btnSync').onclick = openSync;
+
+  // ---------- Routing & events ----------
+  const VIEWS = ['dashboard','sales','payout','akun'];
+  function route(){
+    let v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dashboard';
+    if (v === 'akun' && !akunOpen){ v = 'dashboard'; if (location.hash) location.hash = 'dashboard'; }
+    if (v !== 'akun' && akunOpen) lockAkun();
+    VIEWS.forEach(x => $('#view-' + x).hidden = x !== v);
+    document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('active', a.dataset.view === v));
+  }
+  function renderAll(){ refreshDatalists(); renderSales(); renderPayout(); renderSaldo(); renderAkun(); renderDashboard(); }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-add],[data-edit],[data-del],[data-secret],[data-copy]');
+    if (!t) return;
+    if (t.dataset.add) openForm(t.dataset.add);
+    else if (t.dataset.edit) startEdit(t.dataset.edit, t.dataset.id);
+    else if (t.dataset.del) confirmDelete(t.dataset.del, t.dataset.id);
+    else if (t.hasAttribute('data-secret')){
+      const shown = t.classList.toggle('shown');
+      t.textContent = shown ? t.dataset.secret : '••••••••';
+    } else if (t.hasAttribute('data-copy')){
+      navigator.clipboard.writeText(t.dataset.copy).then(() => toast('Disalin'), () => toast('Gagal menyalin'));
+    }
+  });
+  $('#qSales').oninput = renderSales; $('#qPayout').oninput = renderPayout; $('#qAkun').oninput = renderAkun;
+  $('#periodSel').onchange = renderDashboard;
+  $('#btnBackup').onclick = openBackup;
+  $('#btnTarget').onclick = openTarget;
+  window.addEventListener('hashchange', route);
+
+  load(); persistLocal(); setSync(connected() ? 'ok' : 'off');
+  setupLock(() => { route(); renderAll(); if (connected()) pull(true); });
+})();
+</script>
+</body>
+</html>

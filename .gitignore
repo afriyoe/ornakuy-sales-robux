@@ -1,0 +1,3 @@
+# Backup data berisi sandi akun — jangan pernah di-commit
+*.json
+!apps-script/appsscript.json
