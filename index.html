@@ -150,6 +150,9 @@
   .diff div:last-child{border-bottom:0}
   .diff .old{color:var(--red);text-decoration:line-through}
   .diff .new{color:var(--accent);font-weight:600}
+  .inl{cursor:text;padding:3px 8px;border-radius:6px;border:1px dashed transparent;display:inline-block;min-width:60px}
+  .inl:hover{border-color:var(--line);background:var(--bg)}
+  input.inl-in{width:100px;text-align:right;padding:4px 8px;font-size:13px;border-radius:8px}
   .rule-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
 </style>
 </head>
@@ -590,7 +593,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       .sort((a,b) => (a.username||'').localeCompare(b.username||''));
     $('#tblAkun').innerHTML = `<thead><tr><th>Username</th><th>Status</th><th class="r">Sisa limit</th><th>Sandi</th><th>Email</th><th>Sandi email</th><th>Join komunitas</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
-        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${r.sisaLimit ? fmtInt(r.sisaLimit) : '<span class="muted">—</span>'}</td>
+        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num"><span class="inl" data-inl="${r.id}" title="Klik untuk ubah">${r.sisaLimit ? fmtInt(r.sisaLimit) : '<span class="muted">—</span>'}</span></td>
         <td>${secret(r.sandi)}</td><td>${esc(r.email) || '<span class="muted">—</span>'}</td><td>${secret(r.sandiEmail)}</td>
         <td>${fmtDate(r.tglJoin)}</td>${actions('accounts', r.id)}</tr>`).join('')
         : emptyRow(8, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
@@ -1303,6 +1306,32 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     else if (e.target.closest('[data-saldo-hist]')) openSaldoHist();
   });
   $('#btnSync').onclick = openSync;
+
+  // ---------- Edit langsung sisa limit (tab Akun) ----------
+  // klik angka → ketik → Enter / klik di luar = simpan, Esc = batal. Bisa tulis "5k", "5000 rbx", dst.
+  $('#tblAkun').addEventListener('click', e => {
+    const sp = e.target.closest('[data-inl]'); if (!sp || sp.querySelector('input')) return;
+    const acc = db.accounts.find(a => a.id === sp.dataset.inl); if (!acc) return;
+    const inp = document.createElement('input');
+    inp.className = 'f num inl-in'; inp.inputMode = 'numeric'; inp.value = acc.sisaLimit || '';
+    sp.replaceWith(inp); inp.focus(); inp.select();
+    let done = false;
+    const finish = commit => {
+      if (done) return; done = true;
+      if (commit){
+        const raw = inp.value.trim();
+        const v = raw === '' ? 0 : takeRobux(' ' + raw + ' ', true)[0];
+        if (v === '' || isNaN(v)){ toast('Angka tidak valid'); renderAkun(); return; }
+        if (+v !== (+acc.sisaLimit || 0)){ acc.sisaLimit = +v; save(); renderAll(); toast('Sisa limit disimpan'); return; }
+      }
+      renderAkun();
+    };
+    inp.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter'){ ev.preventDefault(); finish(true); }
+      else if (ev.key === 'Escape'){ ev.preventDefault(); finish(false); }
+    });
+    inp.addEventListener('blur', () => finish(true));
+  });
 
   // ---------- Routing & events ----------
   const VIEWS = ['dashboard','sales','payout','akun'];
