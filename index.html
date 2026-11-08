@@ -294,7 +294,7 @@
       <button class="btn primary" data-add="accounts">+ Tambah akun</button>
     </div>
     <div class="card table-wrap"><table id="tblAkun"></table></div>
-    <p class="muted" style="font-size:12.5px;margin-top:10px">Klik sandi untuk menampilkan / menyembunyikan.</p>
+    <p class="muted" style="font-size:12.5px;margin-top:10px">Klik email atau sandi untuk menampilkan / menyembunyikan.</p>
   </section>
 </div>
 
@@ -819,7 +819,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     $('#tblAkun').innerHTML = `<thead><tr><th>Username</th><th>Status</th><th class="r">Saldo Robux</th><th class="r">Sisa limit</th><th>Sandi</th><th>Email</th><th>Sandi email</th><th>Join komunitas</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
         <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${saldoCell(r)}</td><td class="r num">${limitCell(r)}</td>
-        <td>${secret(r.sandi)}</td><td>${esc(r.email) || '<span class="muted">—</span>'}</td><td>${secret(r.sandiEmail)}</td>
+        <td>${secret(r.sandi)}</td><td>${secret(r.email)}</td><td>${secret(r.sandiEmail)}</td>
         <td>${fmtDate(r.tglJoin)}</td>${actions('accounts', r.id)}</tr>`).join('')
         : emptyRow(9, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
   }
