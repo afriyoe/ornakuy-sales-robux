@@ -8,7 +8,7 @@ const KUNCI = 'GANTI_DENGAN_KUNCI_RAHASIAMU';
 const TABLES = {
   sales:     { sheet: 'Sales',  cols: ['id','tanggal','sumber','idPesanan','robux','pendapatan'], nums: ['robux','pendapatan'] },
   payouts:   { sheet: 'Payout', cols: ['id','tanggal','username','payout'], nums: ['payout'] },
-  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin'], nums: ['sisaLimit'] },
+  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin','pemakaian'], nums: ['sisaLimit'] },
   snapshots: { sheet: 'Saldo Grup', cols: ['id','tanggal','funds','pending','revenuePayouts'], nums: ['funds','pending','revenuePayouts'] },
 };
 
@@ -62,7 +62,7 @@ function writeAll_(data) {
   Object.keys(TABLES).forEach(function (k) {
     const t = TABLES[k], sh = sheet_(t.sheet), rows = (data[k] || []);
     const values = [t.cols].concat(rows.map(function (o) {
-      return t.cols.map(function (c) { const v = o[c]; return t.nums.indexOf(c) > -1 ? (Number(v) || 0) : (v == null ? '' : String(v)); });
+      return t.cols.map(function (c) { const v = o[c]; return t.nums.indexOf(c) > -1 ? (Number(v) || 0) : (v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v))); });
     }));
     sh.clearContents();
     // kolom teks dibuat "plain text" supaya sandi seperti 012569 tidak kehilangan angka 0 dan tanggal tidak diubah

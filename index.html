@@ -153,6 +153,7 @@
   .inl{cursor:text;padding:3px 8px;border-radius:6px;border:1px dashed transparent;display:inline-block;min-width:60px}
   .inl:hover{border-color:var(--line);background:var(--bg)}
   input.inl-in{width:100px;text-align:right;padding:4px 8px;font-size:13px;border-radius:8px}
+  .lim-next{display:block;font-size:11px;color:var(--muted);font-family:'Plus Jakarta Sans',sans-serif;margin-top:2px;white-space:nowrap}
   .rule-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
 </style>
 </head>
@@ -293,7 +294,7 @@ const KUNCI = 'GANTI_DENGAN_KUNCI_RAHASIAMU';
 const TABLES = {
   sales:     { sheet: 'Sales',  cols: ['id','tanggal','sumber','idPesanan','robux','pendapatan'], nums: ['robux','pendapatan'] },
   payouts:   { sheet: 'Payout', cols: ['id','tanggal','username','payout'], nums: ['payout'] },
-  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin'], nums: ['sisaLimit'] },
+  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin','pemakaian'], nums: ['sisaLimit'] },
   snapshots: { sheet: 'Saldo Grup', cols: ['id','tanggal','funds','pending','revenuePayouts'], nums: ['funds','pending','revenuePayouts'] },
 };
 
@@ -347,7 +348,7 @@ function writeAll_(data) {
   Object.keys(TABLES).forEach(function (k) {
     const t = TABLES[k], sh = sheet_(t.sheet), rows = (data[k] || []);
     const values = [t.cols].concat(rows.map(function (o) {
-      return t.cols.map(function (c) { const v = o[c]; return t.nums.indexOf(c) > -1 ? (Number(v) || 0) : (v == null ? '' : String(v)); });
+      return t.cols.map(function (c) { const v = o[c]; return t.nums.indexOf(c) > -1 ? (Number(v) || 0) : (v == null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v))); });
     }));
     sh.clearContents();
     // kolom teks dibuat "plain text" supaya sandi seperti 012569 tidak kehilangan angka 0 dan tanggal tidak diubah
@@ -398,6 +399,56 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     db.settings = Object.assign(blank().settings, db.settings || {});
     if (!Array.isArray(db.settings.idRules)) db.settings.idRules = DEFAULT_RULES();
     if (!Array.isArray(db.snapshots)) db.snapshots = BASE_SNAP();
+    db.accounts.forEach(initLimit);
+  }
+
+  // ---------- Limit akun: 10.000 per akun, pemakaian kembali setelah 31 hari ----------
+  // Setiap kali sisa limit diturunkan, selisihnya dicatat sebagai pemakaian di tanggal itu.
+  // Pemakaian tgl X kembali penuh pada tgl X + 32 hari (mis. 1 Okt → 2 Nov), satu per satu sesuai tanggalnya.
+  const LIMIT_MAX = 10000, RESET_DAYS = 31;
+  const addDays = (iso, n) => { const d = new Date(iso + 'T00:00'); d.setDate(d.getDate() + n); return isoDate(d); };
+  const releaseDate = u => addDays(u.tanggal, RESET_DAYS + 1);
+  function initLimit(a){
+    if (typeof a.pemakaian === 'string'){ try { a.pemakaian = JSON.parse(a.pemakaian || '[]'); } catch(e){ a.pemakaian = []; } }
+    if (!Array.isArray(a.pemakaian)){
+      // data lama tanpa riwayat: sisa yang tercatat dianggap dipakai hari ini
+      const s = +a.sisaLimit || 0;
+      a.pemakaian = s > 0 && s < LIMIT_MAX ? [{ tanggal: today(), jumlah: LIMIT_MAX - s }] : [];
+    }
+    a.pemakaian = a.pemakaian.filter(u => u && u.tanggal && +u.jumlah > 0).map(u => ({ tanggal: u.tanggal, jumlah: +u.jumlah }));
+    a.sisaLimit = calcSisa(a);
+  }
+  const activeUse = a => (a.pemakaian || []).filter(u => today() < releaseDate(u));
+  const calcSisa = a => Math.max(0, LIMIT_MAX - activeUse(a).reduce((t,u) => t + u.jumlah, 0));
+  // Ubah sisa limit sekarang ke nilai baru → catat pemakaian (turun) atau koreksi (naik, dikurangi dari pemakaian terbaru)
+  function setSisa(a, newVal, tanggal){
+    initLimit(a);
+    newVal = Math.max(0, Math.min(LIMIT_MAX, Math.round(+newVal || 0)));
+    const diff = a.sisaLimit - newVal;
+    if (diff > 0) a.pemakaian.push({ tanggal: tanggal || today(), jumlah: diff });
+    else if (diff < 0){
+      let back = -diff;
+      const act = activeUse(a).sort((x,y) => y.tanggal.localeCompare(x.tanggal));
+      for (const u of act){ const take = Math.min(u.jumlah, back); u.jumlah -= take; back -= take; if (!back) break; }
+      a.pemakaian = a.pemakaian.filter(u => u.jumlah > 0);
+    }
+    a.sisaLimit = calcSisa(a);
+  }
+  // Dipanggil saat render: buang pemakaian yang sudah kembali & perbarui angka sisa
+  function refreshLimits(){
+    let changed = false;
+    db.accounts.forEach(a => {
+      const before = JSON.stringify([a.sisaLimit, a.pemakaian]);
+      initLimit(a);
+      a.pemakaian = a.pemakaian.filter(u => today() < releaseDate(u));
+      if (JSON.stringify([a.sisaLimit, a.pemakaian]) !== before) changed = true;
+    });
+    if (changed) save();
+  }
+  // Akun baru: kosong = 10.000, angka = sisa sekarang
+  function newAccountLimit(a, raw){
+    a.pemakaian = []; a.sisaLimit = LIMIT_MAX;
+    if (raw !== '' && raw != null && !isNaN(+raw)) setSisa(a, +raw);
   }
   function load(){
     try {
@@ -430,7 +481,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     accounts: { title: 'Akun', fields: [
       { k:'username', label:'Username', type:'text', req:true, fix: v => v.replace(/^@+/, '') },
       { k:'status', label:'Status', type:'text', list:'dl-status', ph:'Limit 10k dan Plus / Limit 10k / Plus' },
-      { k:'sisaLimit', label:'Sisa limit (Robux)', type:'number' },
+      { k:'sisaLimit', label:'Sisa limit (Robux)', type:'number', keepBlank:true, ph:'kosong = 10.000' },
       { k:'sandi', label:'Sandi', type:'password' },
       { k:'email', label:'Email', type:'email' },
       { k:'sandiEmail', label:'Sandi email', type:'password' },
@@ -497,6 +548,10 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     $('#btnBackEdit').onclick = () => openForm(coll, rec.id, out);
     $('#btnYakinSave').onclick = () => {
       const i = db[coll].findIndex(r => r.id === rec.id);
+      if (coll === 'accounts'){
+        const nv = out.sisaLimit; out.pemakaian = (rec.pemakaian || []).map(u => ({ ...u })); out.sisaLimit = rec.sisaLimit;
+        if (nv !== '' && +nv !== +rec.sisaLimit) setSisa(out, nv);
+      }
       if (i > -1) db[coll][i] = out;
       save(); closeModal(); renderAll(); toast('Perubahan disimpan');
     };
@@ -532,11 +587,12 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       for (const f of sc.fields){
         let v = form.elements[f.k].value.trim();
         if (f.req && v === ''){ $('#formErr').textContent = `${f.label} wajib diisi.`; form.elements[f.k].focus(); return; }
-        if (f.type === 'number') v = v === '' ? 0 : +v;
+        if (f.type === 'number') v = v === '' ? (f.keepBlank ? '' : 0) : +v;
         if (f.fix) v = f.fix(v);
         out[f.k] = v;
       }
       if (rec){ confirmSaveEdit(coll, rec, out); return; }
+      if (coll === 'accounts') newAccountLimit(out, out.sisaLimit);
       db[coll].push(out);
       save(); closeModal(); renderAll(); toast('Data ditambahkan');
     };
@@ -586,6 +642,13 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
 
   const secret = v => v ? `<span class="secret"><span class="val num" data-secret="${esc(v)}">••••••••</span><button class="icon-btn" data-copy="${esc(v)}" title="Salin">${COPY}</button></span>` : '<span class="muted">—</span>';
   const statusClass = s => { const t = (s||'').toLowerCase(); return t.includes('limit') && t.includes('plus') ? 'st-lp' : t.includes('limit') ? 'st-l' : t.includes('plus') ? 'st-p' : 'Nonaktif'; };
+  function limitCell(a){
+    const act = activeUse(a).sort((x,y) => x.tanggal.localeCompare(y.tanggal));
+    const sched = act.map(u => `+${fmtInt(u.jumlah)} pada ${fmtDate(releaseDate(u))} (dipakai ${fmtDate(u.tanggal)})`).join('\n');
+    const next = act[0];
+    return `<span class="inl" data-inl="${a.id}" title="Klik untuk ubah${sched ? '\n\nJadwal kembali:\n' + esc(sched) : ''}">${fmtInt(calcSisa(a))}</span>` +
+      (next ? `<span class="lim-next">↺ +${fmtInt(next.jumlah)} · ${fmtDate(releaseDate(next))}${act.length > 1 ? ` (+${act.length - 1} lagi)` : ''}</span>` : '');
+  }
   function renderAkun(){
     if (!akunOpen){ $('#tblAkun').innerHTML = ''; return; }
     const q = $('#qAkun').value.toLowerCase().trim();
@@ -593,7 +656,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       .sort((a,b) => (a.username||'').localeCompare(b.username||''));
     $('#tblAkun').innerHTML = `<thead><tr><th>Username</th><th>Status</th><th class="r">Sisa limit</th><th>Sandi</th><th>Email</th><th>Sandi email</th><th>Join komunitas</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
-        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num"><span class="inl" data-inl="${r.id}" title="Klik untuk ubah">${r.sisaLimit ? fmtInt(r.sisaLimit) : '<span class="muted">—</span>'}</span></td>
+        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${limitCell(r)}</td>
         <td>${secret(r.sandi)}</td><td>${esc(r.email) || '<span class="muted">—</span>'}</td><td>${secret(r.sandiEmail)}</td>
         <td>${fmtDate(r.tglJoin)}</td>${actions('accounts', r.id)}</tr>`).join('')
         : emptyRow(8, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
@@ -896,9 +959,9 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       title: '⚡ Tambah cepat akun', noun: 'akun', parse: parseAkun,
       ph: 'Satu akun per baris: username sandi, lalu email sandi-email (status, sisa limit & tanggal join bebas posisinya). Contoh:\naji 4j1012569 aji123@gmail.com sandiEmail1 limit 10k plus sisa 5000 robux hari ini\nbudi b8udi99 budi@yahoo.co.id passBudi plus 14 nov 2026',
       cols: [ {k:'username',l:'Username',type:'text',req:1,w:130}, {k:'status',l:'Status',type:'text',list:'dl-status',w:160},
-              {k:'sisaLimit',l:'Sisa limit',type:'number',w:100}, {k:'sandi',l:'Sandi',type:'text',w:130}, {k:'email',l:'Email',type:'text',w:190},
+              {k:'sisaLimit',l:'Sisa limit',type:'number',ph:'10000',w:100}, {k:'sandi',l:'Sandi',type:'text',w:130}, {k:'email',l:'Email',type:'text',w:190},
               {k:'sandiEmail',l:'Sandi email',type:'text',w:130}, {k:'tglJoin',l:'Join komunitas',type:'date',w:140} ],
-      summary: rows => [['Total sisa limit (Robux)', fmtInt(rows.reduce((s,r) => s + (+r.sisaLimit||0), 0))]],
+      summary: rows => [['Total sisa limit (Robux)', fmtInt(rows.reduce((s,r) => s + (r.sisaLimit === '' ? LIMIT_MAX : +r.sisaLimit||0), 0))]],
       fix: r => ({ ...r, username: noAt(String(r.username).trim()) }),
     },
   };
@@ -963,6 +1026,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       $('#qYakinSave').onclick = () => {
         rs.forEach(r => { const rec = { id: uid() };
           q.cols.forEach(c => rec[c.k] = c.type === 'number' ? (+r[c.k] || 0) : String(r[c.k] ?? '').trim());
+          if (coll === 'accounts') newAccountLimit(rec, r.sisaLimit);
           db[coll].push(rec); });
         quickRows[coll] = []; box.querySelector('[data-qin]').value = '';
         save(); closeModal(); renderAll(); toast(`${rs.length} ${q.noun} disimpan`);
@@ -1313,16 +1377,17 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const sp = e.target.closest('[data-inl]'); if (!sp || sp.querySelector('input')) return;
     const acc = db.accounts.find(a => a.id === sp.dataset.inl); if (!acc) return;
     const inp = document.createElement('input');
-    inp.className = 'f num inl-in'; inp.inputMode = 'numeric'; inp.value = acc.sisaLimit || '';
+    inp.className = 'f num inl-in'; inp.inputMode = 'numeric'; inp.value = calcSisa(acc);
     sp.replaceWith(inp); inp.focus(); inp.select();
     let done = false;
     const finish = commit => {
       if (done) return; done = true;
       if (commit){
         const raw = inp.value.trim();
-        const v = raw === '' ? 0 : takeRobux(' ' + raw + ' ', true)[0];
+        if (raw === ''){ renderAkun(); return; }
+        const v = takeRobux(' ' + raw + ' ', true)[0];
         if (v === '' || isNaN(v)){ toast('Angka tidak valid'); renderAkun(); return; }
-        if (+v !== (+acc.sisaLimit || 0)){ acc.sisaLimit = +v; save(); renderAll(); toast('Sisa limit disimpan'); return; }
+        if (+v !== calcSisa(acc)){ setSisa(acc, +v); save(); renderAll(); toast('Sisa limit disimpan'); return; }
       }
       renderAkun();
     };
@@ -1342,7 +1407,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     VIEWS.forEach(x => $('#view-' + x).hidden = x !== v);
     document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('active', a.dataset.view === v));
   }
-  function renderAll(){ refreshDatalists(); renderSales(); renderPayout(); renderSaldo(); renderAkun(); renderDashboard(); }
+  function renderAll(){ refreshLimits(); refreshDatalists(); renderSales(); renderPayout(); renderSaldo(); renderAkun(); renderDashboard(); }
 
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-add],[data-edit],[data-del],[data-secret],[data-copy]');
