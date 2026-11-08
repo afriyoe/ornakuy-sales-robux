@@ -154,6 +154,18 @@
   .inl:hover{border-color:var(--line);background:var(--bg)}
   input.inl-in{width:100px;text-align:right;padding:4px 8px;font-size:13px;border-radius:8px}
   .lim-next{display:block;font-size:11px;color:var(--muted);font-family:'Plus Jakarta Sans',sans-serif;margin-top:2px;white-space:nowrap}
+  .rangebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-bottom:14px}
+  .rangebar input.f{width:auto;padding:6px 10px}
+  .rangebar .rg.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .rangebar .rg-sel{width:auto;padding:6px 10px;font-weight:600}
+  .rangebar .rg-sel.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+  .recap{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;padding:16px}
+  @media (max-width:860px){.recap{grid-template-columns:1fr}}
+  .recap .kpis{margin:0;grid-template-columns:repeat(2,1fr)}
+  .donut-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .donut-legend{display:grid;gap:6px;font-size:13px;flex:1;min-width:160px}
+  .donut-legend div{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center}
+  .donut-legend i{width:12px;height:12px;border-radius:3px}
   .rule-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}
 </style>
 </head>
@@ -186,6 +198,19 @@
     </div>
   </header>
 
+  <div class="rangebar card" id="rangeBar">
+    <input class="f num" type="date" id="rgFrom"><span class="muted">→</span><input class="f num" type="date" id="rgTo">
+    <button class="btn sm rg" data-rg="all">Semua waktu</button>
+    <button class="btn sm rg" data-rg="today">Hari ini</button>
+    <button class="btn sm rg" data-rg="yday">Kemarin</button>
+    <select class="f rg-sel" id="rgPreset">
+      <option value="">Rentang lain…</option>
+      <option value="7">7 hari terakhir</option><option value="30">30 hari terakhir</option>
+      <option value="month">Bulan ini</option><option value="lastmonth">Bulan lalu</option>
+      <option value="90">3 bulan terakhir</option><option value="180">6 bulan terakhir</option><option value="365">1 tahun terakhir</option>
+    </select>
+    <span class="muted" id="rgNote" style="font-size:12px"></span>
+  </div>
   <div class="banner" id="remindBar" hidden></div>
   <div class="banner" id="storageBanner">Penyimpanan browser tidak tersedia di sini — data hilang saat halaman ditutup. Simpan dengan tombol <b>Backup</b> di Dashboard.</div>
 
@@ -194,7 +219,7 @@
     <div class="toolbar">
       <h2>Ringkasan</h2>
       <div class="right">
-        <select class="f" id="periodSel" style="width:auto"></select>
+        <button class="btn" id="btnDemo">Data demo</button>
         <button class="btn" id="btnBackup">Backup / Restore</button>
       </div>
     </div>
@@ -239,6 +264,7 @@
         <button class="btn primary" data-add="sales">+ Tambah sales</button>
       </div>
     </div>
+    <div class="card" id="salesRecap" style="margin-bottom:14px"></div>
     <div class="card quick" data-quick="sales" style="margin-bottom:14px"></div>
     <div class="card table-wrap"><table id="tblSales"></table></div>
   </section>
@@ -266,6 +292,7 @@
         <button class="btn primary" data-add="accounts">+ Tambah akun</button>
       </div>
     </div>
+    <div class="kpis" id="akunRecap"></div>
     <div class="card quick" data-quick="accounts" style="margin-bottom:14px"></div>
     <div class="card table-wrap"><table id="tblAkun"></table></div>
     <p class="muted" style="font-size:12.5px;margin-top:10px">Klik sandi untuk menampilkan / menyembunyikan.</p>
@@ -429,6 +456,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   const allActive = a => [...manualActive(a).map(u => ({ ...u, src: 'koreksi' })),
     ...salesOf(a).map(x => ({ tanggal: x.tanggal, jumlah: +x.robux || 0, src: 'sales' }))].filter(u => u.tanggal && u.jumlah && today() < releaseDate(u));
   const calcSisa = a => Math.max(0, Math.min(LIMIT_MAX, LIMIT_MAX - allActive(a).reduce((t,u) => t + u.jumlah, 0)));
+  // sisa limit pada tanggal tertentu (mis. besok) — pemakaian yang sudah lewat 31 hari dianggap kembali
+  const calcSisaAt = (a, d) => Math.max(0, Math.min(LIMIT_MAX, LIMIT_MAX - allActive(a).filter(u => d < releaseDate(u)).reduce((t,u) => t + u.jumlah, 0)));
   // Ubah sisa limit sekarang ke nilai baru → catat pemakaian (turun) atau koreksi (naik, dikurangi dari pemakaian terbaru)
   function setSisa(a, newVal, tanggal){
     initLimit(a);
@@ -638,10 +667,100 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   const byDateDesc = (a,b) => (b.tanggal||'').localeCompare(a.tanggal||'');
   const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="empty">${msg}</td></tr>`;
 
+  // ---------- Rentang tanggal (berlaku untuk Dashboard, Sales, Payout) ----------
+  const RANGE_KEY = 'ornakuy-range-v1';
+  let range = { from: '', to: '', preset: 'all' };
+  try { range = Object.assign(range, JSON.parse(localStorage.getItem(RANGE_KEY) || '{}')); } catch(e){}
+  const inRange = d => !!d && (!range.from || d >= range.from) && (!range.to || d <= range.to);
+  const firstDataDate = () => [...db.sales, ...db.payouts].map(r => r.tanggal).filter(Boolean).sort()[0] || today();
+  function presetRange(k){
+    const t = new Date(), y = t.getFullYear(), m = t.getMonth();
+    if (k === 'all') return { from: '', to: '' };
+    if (k === 'today') return { from: today(), to: today() };
+    if (k === 'yday') return { from: daysAgo(1), to: daysAgo(1) };
+    if (k === 'month') return { from: isoDate(new Date(y, m, 1)), to: today() };
+    if (k === 'lastmonth') return { from: isoDate(new Date(y, m - 1, 1)), to: isoDate(new Date(y, m, 0)) };
+    return { from: daysAgo(+k - 1), to: today() };
+  }
+  function setRange(r, preset){
+    range = { ...r, preset: preset || 'custom' };
+    try { localStorage.setItem(RANGE_KEY, JSON.stringify(range)); } catch(e){}
+    renderAll();
+  }
+  function renderRangeBar(){
+    // preset relatif (Hari ini, 7 hari, dst) dihitung ulang tiap hari
+    if (range.preset && range.preset !== 'custom'){ const r = presetRange(range.preset); range.from = r.from; range.to = r.to; }
+    $('#rgFrom').value = range.from || firstDataDate();
+    $('#rgTo').value = range.to || today();
+    document.querySelectorAll('.rg').forEach(b => b.classList.toggle('on', b.dataset.rg === range.preset));
+    const sel = $('#rgPreset'), isSel = [...sel.options].some(o => o.value && o.value === range.preset);
+    sel.value = isSel ? range.preset : ''; sel.classList.toggle('on', isSel);
+    $('#rgNote').textContent = range.preset === 'all' ? '' : `${fmtDate(range.from)} – ${fmtDate(range.to)}`;
+  }
+  document.querySelectorAll('.rg').forEach(b => b.onclick = () => setRange(presetRange(b.dataset.rg), b.dataset.rg));
+  $('#rgPreset').onchange = e => { const v = e.target.value; if (v) setRange(presetRange(v), v); };
+  const onDate = () => {
+    let f = $('#rgFrom').value, t = $('#rgTo').value;
+    if (f && t && f > t) [f, t] = [t, f];
+    setRange({ from: f, to: t }, 'custom');
+  };
+  $('#rgFrom').onchange = onDate; $('#rgTo').onchange = onDate;
+
+  // ---------- Diagram bulat ----------
+  const PALETTE = ['#22c470','#4f8cff','#f5a524','#a855f7','#ec4899','#14b8a6','#ef4444','#94a3b8'];
+  function donut(items, centerTop, centerSub){
+    const total = items.reduce((t,x) => t + x.v, 0), R = 54, C = 2 * Math.PI * R;
+    let off = 0;
+    const arcs = total ? items.map((x,i) => { const len = x.v / total * C;
+      const a = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="22"
+        stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(x.k)}: ${(x.v/total*100).toFixed(1)}%</title></circle>`;
+      off += len; return a; }).join('') : `<circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--line)" stroke-width="22"/>`;
+    return `<svg viewBox="0 0 140 140" width="150" height="150" role="img" aria-label="Persentase per sumber">${arcs}
+      <text x="70" y="68" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">${centerTop}</text>
+      <text x="70" y="86" text-anchor="middle" font-size="10" fill="var(--muted)">${centerSub}</text></svg>`;
+  }
+
+  // ---------- Rekap Sales ----------
+  function renderSalesRecap(){
+    const S = db.sales.filter(r => inRange(r.tanggal));
+    const rbx = sumOf(S, 'robux'), rev = sumOf(S, 'pendapatan');
+    const src = {}; S.forEach(r => { const k = r.sumber || 'Lainnya', o = src[k] ||= { r:0, n:0 }; o.r += +r.robux || 0; o.n++; });
+    const items = Object.entries(src).map(([k,o]) => ({ k, v: o.r, n: o.n })).sort((a,b) => b.v - a.v);
+    const tile = (l, v, sub, hl) => `<div class="kpi ${hl?'hl':''}" style="border:1px solid var(--line);border-radius:12px"><div class="lbl">${l}</div><div class="val num">${v}</div><div class="sub">${sub}</div></div>`;
+    $('#salesRecap').innerHTML = `<div class="hd"><h3>Rekap sales <span class="muted" style="font-weight:500">· ${range.preset === 'all' ? 'semua waktu' : fmtDate(range.from) + ' – ' + fmtDate(range.to)}</span></h3></div>
+      <div class="recap" style="padding-top:8px">
+        <div class="kpis">
+          ${tile('Total Robux terkirim', fmtInt(rbx), `${fmtInt(S.length)} pesanan`, true)}
+          ${tile('Total pendapatan', fmtRp(rev), rbx ? `≈ ${fmtRp(rev / rbx * 1000)} / 1.000 Robux` : '&nbsp;')}
+          ${tile('Rata-rata per pesanan', fmtInt(S.length ? rbx / S.length : 0), 'Robux')}
+          ${tile('Pesanan tanpa pengirim', fmtInt(S.filter(r => !r.pengirim).length), 'belum terhubung ke akun')}
+        </div>
+        <div><div class="muted" style="font-size:12px;font-weight:600;margin-bottom:8px">SUMBER (% dari Robux terkirim)</div>
+          <div class="donut-wrap">${donut(items, items.length, 'sumber')}
+            <div class="donut-legend">${items.length ? items.map((x,i) => `<div><i style="background:${PALETTE[i % PALETTE.length]}"></i>
+              <span>${esc(x.k)} <span class="muted">· ${x.n} pesanan</span></span><b class="num">${(x.v / (rbx || 1) * 100).toFixed(1)}%</b></div>`).join('') : '<span class="muted">Belum ada sales di rentang ini.</span>'}</div>
+          </div></div>
+      </div>`;
+  }
+
+  // ---------- Rekap Akun ----------
+  function renderAkunRecap(){
+    const A = db.accounts, besok = addDays(today(), 1);
+    const siap = A.filter(a => calcSisa(a) > 0).length;
+    const saldo = A.reduce((t,a) => t + calcSaldo(a), 0), sisa = A.reduce((t,a) => t + calcSisa(a), 0);
+    const sisaBesok = A.reduce((t,a) => t + calcSisaAt(a, besok), 0), balik = sisaBesok - sisa;
+    const card = (l, v, sub, hl) => `<div class="card kpi ${hl?'hl':''}"><div class="lbl">${l}</div><div class="val num">${v}</div><div class="sub">${sub}</div></div>`;
+    $('#akunRecap').innerHTML =
+      card('Akun siap pakai', `${fmtInt(siap)}<span style="font-size:14px" class="muted"> / ${fmtInt(A.length)}</span>`, 'limit belum habis', true) +
+      card('Total saldo Robux', fmtInt(saldo), 'payout masuk − terjual') +
+      card('Total sisa limit', fmtInt(sisa), 'posisi hari ini') +
+      card('Limit balik besok', (balik > 0 ? '+' : '') + fmtInt(balik), `${fmtDate(besok)} · total jadi ${fmtInt(sisaBesok)}`);
+  }
+
   // ---------- Tables ----------
   function renderSales(){
     const q = $('#qSales').value.toLowerCase().trim();
-    const rows = db.sales.filter(r => !q || `${r.sumber} ${r.idPesanan} ${r.pengirim||''}`.toLowerCase().includes(q)).sort(byDateDesc);
+    const rows = db.sales.filter(r => inRange(r.tanggal) && (!q || `${r.sumber} ${r.idPesanan} ${r.pengirim||''}`.toLowerCase().includes(q))).sort(byDateDesc);
     const tR = rows.reduce((s,r) => s + (+r.robux||0), 0), tP = rows.reduce((s,r) => s + (+r.pendapatan||0), 0);
     $('#tblSales').innerHTML = `<thead><tr><th>Tanggal</th><th>Sumber website</th><th>ID pesanan</th><th>Username pengirim</th><th class="r">Robux</th><th class="r">Pendapatan</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
@@ -649,17 +768,17 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
         <td class="num">${esc(r.idPesanan) || '<span class="muted">—</span>'}</td>
         <td>${r.pengirim ? `<b>${esc(r.pengirim)}</b>${findAcc(r.pengirim) ? '' : ' <span class="pill Pending" title="Belum ada di tab Akun">?</span>'}` : '<span class="muted">—</span>'}</td>
         <td class="r num">${fmtRbx(r.robux)}</td><td class="r num">${fmtRp(r.pendapatan)}</td>${actions('sales', r.id)}</tr>`).join('')
-        : emptyRow(7, q ? 'Tidak ada yang cocok.' : 'Belum ada data sales. Klik “+ Tambah sales”.')}</tbody>
+        : emptyRow(7, q ? 'Tidak ada yang cocok.' : (db.sales.length ? 'Tidak ada sales di rentang tanggal ini.' : 'Belum ada data sales. Klik “+ Tambah sales”.'))}</tbody>
       ${rows.length ? `<tfoot><tr><td colspan="4">${rows.length} pesanan</td><td class="r num">${fmtRbx(tR)}</td><td class="r num">${fmtRp(tP)}</td><td></td></tr></tfoot>` : ''}`;
   }
 
   function renderPayout(){
     const q = $('#qPayout').value.toLowerCase().trim();
-    const rows = db.payouts.filter(r => !q || (r.username||'').toLowerCase().includes(q)).sort(byDateDesc);
+    const rows = db.payouts.filter(r => inRange(r.tanggal) && (!q || (r.username||'').toLowerCase().includes(q))).sort(byDateDesc);
     const t = rows.reduce((s,r) => s + (+r.payout||0), 0);
     $('#tblPayout').innerHTML = `<thead><tr><th>Tanggal</th><th>Username</th><th class="r">Payout</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr><td>${fmtDate(r.tanggal)}</td><td><b>${esc(r.username)}</b></td><td class="r num">${fmtRbx(r.payout)}</td>${actions('payouts', r.id)}</tr>`).join('')
-        : emptyRow(4, q ? 'Tidak ada yang cocok.' : 'Belum ada payout. Klik “+ Tambah payout”.')}</tbody>
+        : emptyRow(4, q ? 'Tidak ada yang cocok.' : (db.payouts.length ? 'Tidak ada payout di rentang tanggal ini.' : 'Belum ada payout. Klik “+ Tambah payout”.'))}</tbody>
       ${rows.length ? `<tfoot><tr><td colspan="2">${rows.length} transfer</td><td class="r num">${fmtRbx(t)}</td><td></td></tr></tfoot>` : ''}`;
   }
 
@@ -693,20 +812,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   }
 
   // ---------- Dashboard ----------
-  function periodOptions(){
-    const months = [...new Set([...db.sales, ...db.payouts].map(r => monthKey(r.tanggal)).filter(Boolean))];
-    const cur = today().slice(0,7); if (!months.includes(cur)) months.push(cur);
-    months.sort().reverse();
-    const sel = $('#periodSel'), prev = sel.value || 'all';
-    sel.innerHTML = `<option value="all">Semua waktu</option>` + months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
-    sel.value = [...sel.options].some(o => o.value === prev) ? prev : 'all';
-  }
-
   function renderDashboard(){
-    periodOptions();
-    const p = $('#periodSel').value;
-    const inP = r => p === 'all' || monthKey(r.tanggal) === p;
-    const S = db.sales.filter(inP), P = db.payouts.filter(inP);
+    const S = db.sales.filter(r => inRange(r.tanggal)), P = db.payouts.filter(r => inRange(r.tanggal));
     const rbx = S.reduce((s,r) => s + (+r.robux||0), 0);
     const rev = S.reduce((s,r) => s + (+r.pendapatan||0), 0);
     const pay = P.reduce((s,r) => s + (+r.payout||0), 0);
@@ -726,7 +833,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     ].map(k => `<div class="card kpi ${k.hl?'hl':''}"><div class="lbl">${k.l}</div><div class="val num">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
 
     // Target
-    const tm = p === 'all' ? today().slice(0,7) : p;
+    const tm = (range.to || today()).slice(0,7);
     const tR = db.sales.filter(r => monthKey(r.tanggal) === tm).reduce((s,r) => s + (+r.robux||0), 0);
     const tgt = +db.settings.target || 0, pct = tgt ? Math.min(100, tR / tgt * 100) : 0;
     $('#targetTitle').textContent = `Target ${monthLabel(tm)}`;
@@ -740,7 +847,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     db.sales.forEach(r => { const k = monthKey(r.tanggal); if(k){ (map[k] ||= {s:0,p:0}).s += +r.robux||0; }});
     db.payouts.forEach(r => { const k = monthKey(r.tanggal); if(k){ (map[k] ||= {s:0,p:0}).p += +r.payout||0; }});
     const keys = Object.keys(map).sort().slice(-12);
-    $('#chartMonthly').innerHTML = keys.length ? barChart(keys, map, p) : `<div class="empty">Grafik muncul setelah ada data.</div>`;
+    $('#chartMonthly').innerHTML = keys.length ? barChart(keys, map) : `<div class="empty">Grafik muncul setelah ada data.</div>`;
 
     // By source
     const src = {};
@@ -749,7 +856,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     $('#tblSource').innerHTML = `<thead><tr><th>Sumber</th><th class="r">Pesanan</th><th class="r">Robux</th><th class="r">Pendapatan</th></tr></thead><tbody>${
       srcRows.length ? srcRows.map(([k,o]) => `<tr><td><span class="pill src">${esc(k)}</span><span class="share"><span style="width:${rbx? o.r/rbx*100 : 0}%"></span></span></td>
         <td class="r num">${fmtInt(o.n)}</td><td class="r num">${fmtRbx(o.r)}</td><td class="r num">${fmtRp(o.rev)}</td></tr>`).join('')
-      : emptyRow(4, 'Belum ada sales di periode ini.')}</tbody>`;
+      : emptyRow(4, 'Belum ada sales di rentang ini.')}</tbody>`;
 
     // Payout per user
     const pu = {};
@@ -757,10 +864,10 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const puRows = Object.entries(pu).sort((a,b) => b[1].t - a[1].t);
     $('#tblPayoutUser').innerHTML = `<thead><tr><th>Username</th><th class="r">Transfer</th><th class="r">Total</th></tr></thead><tbody>${
       puRows.length ? puRows.map(([k,o]) => `<tr><td><b>${esc(k)}</b></td><td class="r num">${o.n}×</td><td class="r num">${fmtRbx(o.t)}</td></tr>`).join('')
-      : emptyRow(3, 'Belum ada payout di periode ini.')}</tbody>`;
+      : emptyRow(3, 'Belum ada payout di rentang ini.')}</tbody>`;
   }
 
-  function barChart(keys, map, sel){
+  function barChart(keys, map){
     const W = 640, H = 230, padL = 50, padB = 28, padT = 10;
     const max = Math.max(1, ...keys.map(k => Math.max(map[k].s, map[k].p)));
     const nice = (() => { const m = Math.pow(10, Math.floor(Math.log10(max))); return Math.ceil(max / m) * m; })();
@@ -771,7 +878,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     for (let i = 0; i <= 4; i++){ const v = nice * i / 4, yy = y(v);
       g += `<line x1="${padL}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${padL-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${short(v)}</text>`; }
     keys.forEach((k,i) => {
-      const cx = padL + gw * i + gw / 2, dim = sel !== 'all' && sel !== k ? ' opacity="0.35"' : '';
+      const cx = padL + gw * i + gw / 2, mEnd = isoDate(new Date(+k.slice(0,4), +k.slice(5,7), 0));
+      const dim = (range.from && mEnd < range.from) || (range.to && k + '-01' > range.to) ? ' opacity="0.3"' : '';
       const s = map[k].s, p = map[k].p;
       g += `<g${dim}><rect x="${cx - bw - 1}" y="${y(s)}" width="${bw}" height="${H - padB - y(s)}" rx="3" fill="var(--accent)"><title>${monthLabel(k)} — terjual ${fmtRbx(s)}</title></rect>
         <rect x="${cx + 1}" y="${y(p)}" width="${bw}" height="${H - padB - y(p)}" rx="3" fill="var(--blue)"><title>${monthLabel(k)} — payout ${fmtRbx(p)}</title></rect>
@@ -1445,6 +1553,55 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     inp.addEventListener('blur', () => finish(true));
   });
 
+  // ---------- Data demo (semua id diawali "demo-" supaya bisa dihapus bersih) ----------
+  function makeDemo(){
+    const d = n => daysAgo(n), A = (u, st, extra) => ({ id: 'demo-acc-' + u, username: u, status: st, sandi: 'demo123', email: u + '.demo@gmail.com', sandiEmail: 'demoMail1', tglJoin: d(60), pemakaian: [], ...extra });
+    const accounts = [
+      A('aji', 'Limit 10k dan Plus'), A('budi', 'Limit 10k'), A('citra', 'Plus'), A('deni', 'Limit 10k'),
+      A('eko', 'Limit 10k', { pemakaian: [{ tanggal: d(10), jumlah: 10000 }] }),   // limit habis (koreksi manual) → contoh akun tidak siap
+    ];
+    const P = (n, u, v, i) => ({ id: 'demo-po-' + i, tanggal: d(n), username: '@' + u, payout: v });
+    const payouts = [ P(40,'aji',8000,1), P(35,'budi',6000,2), P(20,'citra',5000,3), P(10,'aji',4000,4), P(5,'deni',3000,5), P(2,'budi',2000,6) ];
+    const S = (n, src, idp, u, rbx, rp, i) => ({ id: 'demo-sl-' + i, tanggal: d(n), sumber: src, idPesanan: idp, pengirim: u ? '@' + u : '', robux: rbx, pendapatan: rp });
+    const sales = [
+      S(38, 'Itemku',   'OD000000155260011', 'aji',   2000, 150000, 1),   // > 31 hari → limitnya sudah kembali
+      S(31, 'Indoblox', 'GBX-261008-A1B2C3', 'budi',  2500, 185000, 2),   // limit balik BESOK
+      S(31, 'Facebook', '',                  'aji',   1000,  75000, 3),   // limit balik BESOK
+      S(25, 'Discord',  '',                  'budi',  1500, 110000, 4),
+      S(18, 'Itemku',   'OD000000155261234', 'citra', 3000, 225000, 5),
+      S(12, 'Itemku',   'OD000000155262345', 'aji',   2000, 150000, 6),
+      S(7,  'Indoblox', 'GBX-261101-D4E5F6', 'citra', 1000,  76000, 7),
+      S(3,  'Facebook', '',                  'deni',  1500, 112000, 8),
+      S(1,  'Itemku',   'OD000000155263605', 'aji',   2500, 190000, 9),
+      S(0,  'Discord',  '',                  '',      1000,  75000, 10),  // tanpa pengirim → tidak mengubah akun
+    ];
+    return { accounts, payouts, sales };
+  }
+  const isDemo = r => String(r.id || '').startsWith('demo-');
+  function openDemo(){
+    const n = ['sales','payouts','accounts'].reduce((t,k) => t + db[k].filter(isDemo).length, 0);
+    openModal('Data demo', `<p style="margin:0 0 10px">Isi contoh untuk mengecek alur kerja: <b>5 akun, 6 payout, 10 sales</b> dari Itemku, Indoblox, Facebook & Discord dengan tanggal 0–40 hari lalu (ada yang limitnya balik besok, ada akun yang limitnya habis, ada sales tanpa pengirim).</p>
+      <p class="muted" style="margin:0 0 10px;font-size:12.5px">Data demo ditambahkan di samping datamu (tidak menimpa) dan bisa dihapus bersih kapan saja. ${connected() ? '<b>Spreadsheet sedang tersambung</b> — data demo ikut terkirim ke sheet, dan ikut terhapus saat dihapus di sini.' : ''}</p>
+      ${n ? `<p style="margin:0"><b>${n}</b> data demo sedang terpasang.</p>` : ''}`,
+      `<button class="btn" data-close>Tutup</button>${n ? '<button class="btn danger" id="demoDel">Hapus data demo</button>' : ''}<button class="btn primary" id="demoAdd">${n ? 'Pasang ulang' : 'Isi data demo'}</button>`);
+    const strip = () => ['sales','payouts','accounts'].forEach(k => db[k] = db[k].filter(r => !isDemo(r)));
+    $('#demoAdd').onclick = () => {
+      const clash = makeDemo().accounts.filter(a => db.accounts.some(x => !isDemo(x) && ukey(x.username) === ukey(a.username)));
+      openModal('Isi data demo?', `<p style="margin:0">Akan ditambahkan 5 akun, 6 payout, dan 10 sales contoh.${clash.length ? ` <br><br><b>Perhatian:</b> username ${clash.map(a => a.username).join(', ')} sudah ada di akunmu — saldo & limitnya akan ikut terpengaruh data demo.` : ''}</p>`,
+        `<button class="btn" id="demoBack">Batal</button><button class="btn primary" id="demoGo">Yakin, isi</button>`);
+      $('#demoBack').onclick = openDemo;
+      $('#demoGo').onclick = () => { strip(); const dm = makeDemo(); db.accounts.push(...dm.accounts); db.payouts.push(...dm.payouts); db.sales.push(...dm.sales);
+        setRange(presetRange('all'), 'all'); save(); closeModal(); renderAll(); toast('Data demo dipasang'); };
+    };
+    if (n) $('#demoDel').onclick = () => {
+      openModal('Hapus data demo?', `<p style="margin:0">${n} data demo akan dihapus. Datamu sendiri tidak disentuh.</p>`,
+        `<button class="btn" id="demoBack2">Batal</button><button class="btn danger" id="demoDelGo">Yakin, hapus</button>`);
+      $('#demoBack2').onclick = openDemo;
+      $('#demoDelGo').onclick = () => { strip(); save(); closeModal(); renderAll(); toast('Data demo dihapus'); };
+    };
+  }
+  $('#btnDemo').onclick = openDemo;
+
   // ---------- Routing & events ----------
   const VIEWS = ['dashboard','sales','payout','akun'];
   function route(){
@@ -1454,7 +1611,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     VIEWS.forEach(x => $('#view-' + x).hidden = x !== v);
     document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('active', a.dataset.view === v));
   }
-  function renderAll(){ refreshLimits(); refreshDatalists(); renderSales(); renderPayout(); renderSaldo(); renderAkun(); renderDashboard(); }
+  function renderAll(){ refreshLimits(); refreshDatalists(); renderRangeBar(); renderSalesRecap(); renderSales(); renderPayout(); renderSaldo(); renderAkunRecap(); renderAkun(); renderDashboard(); }
 
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-add],[data-edit],[data-del],[data-secret],[data-copy]');
@@ -1470,7 +1627,6 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     }
   });
   $('#qSales').oninput = renderSales; $('#qPayout').oninput = renderPayout; $('#qAkun').oninput = renderAkun;
-  $('#periodSel').onchange = renderDashboard;
   $('#btnBackup').onclick = openBackup;
   $('#btnTarget').onclick = openTarget;
   window.addEventListener('hashchange', route);
