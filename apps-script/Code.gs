@@ -6,9 +6,9 @@ const SHEET_ID = '1jxorIFEuOVPtn8CpYvq-TO8aOfSTm54a_dsJHF9NoSw';
 const KUNCI = 'GANTI_DENGAN_KUNCI_RAHASIAMU';
 
 const TABLES = {
-  sales:     { sheet: 'Sales',  cols: ['id','tanggal','sumber','idPesanan','robux','pendapatan'], nums: ['robux','pendapatan'] },
+  sales:     { sheet: 'Sales',  cols: ['id','tanggal','sumber','idPesanan','pengirim','robux','pendapatan'], nums: ['robux','pendapatan'] },
   payouts:   { sheet: 'Payout', cols: ['id','tanggal','username','payout'], nums: ['payout'] },
-  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin','pemakaian'], nums: ['sisaLimit'] },
+  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin','pemakaian','saldo'], nums: ['sisaLimit','saldo'] },
   snapshots: { sheet: 'Saldo Grup', cols: ['id','tanggal','funds','pending','revenuePayouts'], nums: ['funds','pending','revenuePayouts'] },
 };
 

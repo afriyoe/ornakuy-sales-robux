@@ -290,9 +290,9 @@ const SHEET_ID = '1jxorIFEuOVPtn8CpYvq-TO8aOfSTm54a_dsJHF9NoSw';
 const KUNCI = 'GANTI_DENGAN_KUNCI_RAHASIAMU';
 
 const TABLES = {
-  sales:     { sheet: 'Sales',  cols: ['id','tanggal','sumber','idPesanan','robux','pendapatan'], nums: ['robux','pendapatan'] },
+  sales:     { sheet: 'Sales',  cols: ['id','tanggal','sumber','idPesanan','pengirim','robux','pendapatan'], nums: ['robux','pendapatan'] },
   payouts:   { sheet: 'Payout', cols: ['id','tanggal','username','payout'], nums: ['payout'] },
-  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin','pemakaian'], nums: ['sisaLimit'] },
+  accounts:  { sheet: 'Akun',   cols: ['id','username','status','sisaLimit','sandi','email','sandiEmail','tglJoin','pemakaian','saldo'], nums: ['sisaLimit','saldo'] },
   snapshots: { sheet: 'Saldo Grup', cols: ['id','tanggal','funds','pending','revenuePayouts'], nums: ['funds','pending','revenuePayouts'] },
 };
 
@@ -413,11 +413,22 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       const s = +a.sisaLimit || 0;
       a.pemakaian = s > 0 && s < LIMIT_MAX ? [{ tanggal: today(), jumlah: LIMIT_MAX - s }] : [];
     }
-    a.pemakaian = a.pemakaian.filter(u => u && u.tanggal && +u.jumlah > 0).map(u => ({ tanggal: u.tanggal, jumlah: +u.jumlah }));
+    a.pemakaian = a.pemakaian.filter(u => u && u.tanggal && +u.jumlah).map(u => ({ tanggal: u.tanggal, jumlah: +u.jumlah }));
     a.sisaLimit = calcSisa(a);
   }
-  const activeUse = a => (a.pemakaian || []).filter(u => today() < releaseDate(u));
-  const calcSisa = a => Math.max(0, LIMIT_MAX - activeUse(a).reduce((t,u) => t + u.jumlah, 0));
+  // Hubungan antar tab lewat username (tanpa @, huruf besar/kecil diabaikan)
+  const ukey = u => String(u || '').replace(/^@+/, '').trim().toLowerCase();
+  const findAcc = u => db.accounts.find(a => ukey(a.username) === ukey(u));
+  const salesOf = a => db.sales.filter(x => x.pengirim && ukey(x.pengirim) === ukey(a.username));
+  const payoutsOf = a => db.payouts.filter(x => ukey(x.username) === ukey(a.username));
+  const sumOf = (arr, k) => arr.reduce((t, x) => t + (+x[k] || 0), 0);
+  // Saldo Robux akun = payout masuk − Robux terjual dari akun itu
+  const calcSaldo = a => sumOf(payoutsOf(a), 'payout') - sumOf(salesOf(a), 'robux');
+  // Pemakaian limit = sales dari akun itu + koreksi manual; masing-masing kembali setelah 31 hari
+  const manualActive = a => (a.pemakaian || []).filter(u => today() < releaseDate(u));
+  const allActive = a => [...manualActive(a).map(u => ({ ...u, src: 'koreksi' })),
+    ...salesOf(a).map(x => ({ tanggal: x.tanggal, jumlah: +x.robux || 0, src: 'sales' }))].filter(u => u.tanggal && u.jumlah && today() < releaseDate(u));
+  const calcSisa = a => Math.max(0, Math.min(LIMIT_MAX, LIMIT_MAX - allActive(a).reduce((t,u) => t + u.jumlah, 0)));
   // Ubah sisa limit sekarang ke nilai baru → catat pemakaian (turun) atau koreksi (naik, dikurangi dari pemakaian terbaru)
   function setSisa(a, newVal, tanggal){
     initLimit(a);
@@ -426,9 +437,11 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     if (diff > 0) a.pemakaian.push({ tanggal: tanggal || today(), jumlah: diff });
     else if (diff < 0){
       let back = -diff;
-      const act = activeUse(a).sort((x,y) => y.tanggal.localeCompare(x.tanggal));
+      const act = manualActive(a).filter(u => u.jumlah > 0).sort((x,y) => y.tanggal.localeCompare(x.tanggal));
       for (const u of act){ const take = Math.min(u.jumlah, back); u.jumlah -= take; back -= take; if (!back) break; }
-      a.pemakaian = a.pemakaian.filter(u => u.jumlah > 0);
+      // sisanya (mis. limit dipakai sales tapi dikoreksi naik) dicatat sebagai koreksi minus
+      if (back) a.pemakaian.push({ tanggal: tanggal || today(), jumlah: -back });
+      a.pemakaian = a.pemakaian.filter(u => u.jumlah);
     }
     a.sisaLimit = calcSisa(a);
   }
@@ -436,10 +449,20 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   function refreshLimits(){
     let changed = false;
     db.accounts.forEach(a => {
-      const before = JSON.stringify([a.sisaLimit, a.pemakaian]);
+      const before = JSON.stringify([a.sisaLimit, a.pemakaian, a.saldo]);
       initLimit(a);
       a.pemakaian = a.pemakaian.filter(u => today() < releaseDate(u));
-      if (JSON.stringify([a.sisaLimit, a.pemakaian]) !== before) changed = true;
+      // koreksi minus tidak boleh melebihi pemakaian yang masih berjalan (mis. sales-nya sudah dihapus)
+      const act = allActive(a), pos = act.filter(u => u.jumlah > 0).reduce((t,u) => t + u.jumlah, 0);
+      let over = -act.filter(u => u.jumlah < 0).reduce((t,u) => t + u.jumlah, 0) - pos;
+      if (over > 0){
+        a.pemakaian.filter(u => u.jumlah < 0).sort((x,y) => y.tanggal.localeCompare(x.tanggal)).forEach(u => {
+          if (over <= 0) return; const take = Math.min(-u.jumlah, over); u.jumlah += take; over -= take; });
+        a.pemakaian = a.pemakaian.filter(u => u.jumlah);
+      }
+      a.sisaLimit = calcSisa(a);
+      a.saldo = calcSaldo(a);
+      if (JSON.stringify([a.sisaLimit, a.pemakaian, a.saldo]) !== before) changed = true;
     });
     if (changed) save();
   }
@@ -468,6 +491,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       { k:'tanggal', label:'Tanggal', type:'date', req:true, def: today },
       { k:'sumber', label:'Sumber website', type:'text', list:'dl-sumber', req:true, ph:'mis. nama website / marketplace' },
       { k:'idPesanan', label:'ID pesanan', type:'text' },
+      { k:'pengirim', label:'Username pengirim', type:'text', list:'dl-username', ph:'akun yang mengirim Robux', fix: v => v ? '@' + v.replace(/^@+/, '') : v },
       { k:'robux', label:'Jumlah Robux', type:'number', req:true },
       { k:'pendapatan', label:'Pendapatan (Rp)', type:'number' },
     ]},
@@ -617,15 +641,16 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   // ---------- Tables ----------
   function renderSales(){
     const q = $('#qSales').value.toLowerCase().trim();
-    const rows = db.sales.filter(r => !q || `${r.sumber} ${r.idPesanan}`.toLowerCase().includes(q)).sort(byDateDesc);
+    const rows = db.sales.filter(r => !q || `${r.sumber} ${r.idPesanan} ${r.pengirim||''}`.toLowerCase().includes(q)).sort(byDateDesc);
     const tR = rows.reduce((s,r) => s + (+r.robux||0), 0), tP = rows.reduce((s,r) => s + (+r.pendapatan||0), 0);
-    $('#tblSales').innerHTML = `<thead><tr><th>Tanggal</th><th>Sumber website</th><th>ID pesanan</th><th class="r">Robux</th><th class="r">Pendapatan</th><th></th></tr></thead>
+    $('#tblSales').innerHTML = `<thead><tr><th>Tanggal</th><th>Sumber website</th><th>ID pesanan</th><th>Username pengirim</th><th class="r">Robux</th><th class="r">Pendapatan</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
         <td>${fmtDate(r.tanggal)}</td><td><span class="pill src">${esc(r.sumber)}</span></td>
         <td class="num">${esc(r.idPesanan) || '<span class="muted">—</span>'}</td>
+        <td>${r.pengirim ? `<b>${esc(r.pengirim)}</b>${findAcc(r.pengirim) ? '' : ' <span class="pill Pending" title="Belum ada di tab Akun">?</span>'}` : '<span class="muted">—</span>'}</td>
         <td class="r num">${fmtRbx(r.robux)}</td><td class="r num">${fmtRp(r.pendapatan)}</td>${actions('sales', r.id)}</tr>`).join('')
-        : emptyRow(6, q ? 'Tidak ada yang cocok.' : 'Belum ada data sales. Klik “+ Tambah sales”.')}</tbody>
-      ${rows.length ? `<tfoot><tr><td colspan="3">${rows.length} pesanan</td><td class="r num">${fmtRbx(tR)}</td><td class="r num">${fmtRp(tP)}</td><td></td></tr></tfoot>` : ''}`;
+        : emptyRow(7, q ? 'Tidak ada yang cocok.' : 'Belum ada data sales. Klik “+ Tambah sales”.')}</tbody>
+      ${rows.length ? `<tfoot><tr><td colspan="4">${rows.length} pesanan</td><td class="r num">${fmtRbx(tR)}</td><td class="r num">${fmtRp(tP)}</td><td></td></tr></tfoot>` : ''}`;
   }
 
   function renderPayout(){
@@ -640,24 +665,31 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
 
   const secret = v => v ? `<span class="secret"><span class="val num" data-secret="${esc(v)}">••••••••</span><button class="icon-btn" data-copy="${esc(v)}" title="Salin">${COPY}</button></span>` : '<span class="muted">—</span>';
   const statusClass = s => { const t = (s||'').toLowerCase(); return t.includes('limit') && t.includes('plus') ? 'st-lp' : t.includes('limit') ? 'st-l' : t.includes('plus') ? 'st-p' : 'Nonaktif'; };
+  function saldoCell(a){
+    const masuk = sumOf(payoutsOf(a), 'payout'), keluar = sumOf(salesOf(a), 'robux'), v = masuk - keluar;
+    return `<span${v < 0 ? ' style="color:var(--red)"' : ''}>${fmtInt(v)}</span><span class="lim-next">masuk ${fmtInt(masuk)} · terjual ${fmtInt(keluar)}</span>`;
+  }
   function limitCell(a){
-    const act = activeUse(a).sort((x,y) => x.tanggal.localeCompare(y.tanggal));
-    const sched = act.map(u => `+${fmtInt(u.jumlah)} pada ${fmtDate(releaseDate(u))} (dipakai ${fmtDate(u.tanggal)})`).join('\n');
+    // gabung per tanggal kembali (sales + koreksi), tampilkan yang hasilnya plus
+    const byDate = {};
+    allActive(a).forEach(u => { const r = releaseDate(u); byDate[r] = (byDate[r] || 0) + u.jumlah; });
+    const act = Object.entries(byDate).filter(([,v]) => v > 0).sort(([x],[y]) => x.localeCompare(y)).map(([r, v]) => ({ r, jumlah: v }));
+    const sched = act.map(u => `+${fmtInt(u.jumlah)} pada ${fmtDate(u.r)}`).join('\n');
     const next = act[0];
     return `<span class="inl" data-inl="${a.id}" title="Klik untuk ubah${sched ? '\n\nJadwal kembali:\n' + esc(sched) : ''}">${fmtInt(calcSisa(a))}</span>` +
-      (next ? `<span class="lim-next">↺ +${fmtInt(next.jumlah)} · ${fmtDate(releaseDate(next))}${act.length > 1 ? ` (+${act.length - 1} lagi)` : ''}</span>` : '');
+      (next ? `<span class="lim-next">↺ +${fmtInt(next.jumlah)} · ${fmtDate(next.r)}${act.length > 1 ? ` (+${act.length - 1} lagi)` : ''}</span>` : '');
   }
   function renderAkun(){
     if (!akunOpen){ $('#tblAkun').innerHTML = ''; return; }
     const q = $('#qAkun').value.toLowerCase().trim();
     const rows = db.accounts.filter(r => !q || `${r.username} ${r.email}`.toLowerCase().includes(q))
       .sort((a,b) => (a.username||'').localeCompare(b.username||''));
-    $('#tblAkun').innerHTML = `<thead><tr><th>Username</th><th>Status</th><th class="r">Sisa limit</th><th>Sandi</th><th>Email</th><th>Sandi email</th><th>Join komunitas</th><th></th></tr></thead>
+    $('#tblAkun').innerHTML = `<thead><tr><th>Username</th><th>Status</th><th class="r">Saldo Robux</th><th class="r">Sisa limit</th><th>Sandi</th><th>Email</th><th>Sandi email</th><th>Join komunitas</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
-        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${limitCell(r)}</td>
+        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${saldoCell(r)}</td><td class="r num">${limitCell(r)}</td>
         <td>${secret(r.sandi)}</td><td>${esc(r.email) || '<span class="muted">—</span>'}</td><td>${secret(r.sandiEmail)}</td>
         <td>${fmtDate(r.tglJoin)}</td>${actions('accounts', r.id)}</tr>`).join('')
-        : emptyRow(8, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
+        : emptyRow(9, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
   }
 
   // ---------- Dashboard ----------
@@ -688,8 +720,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       { l:'Robux terjual', v: fmtRbx(rbx), s: `${fmtInt(S.length)} pesanan`, hl:true },
       { l:'Pendapatan', v: fmtRp(rev), s: rate ? `≈ ${fmtRp(rate*1000)} / 1.000 Robux` : '&nbsp;' },
       { l:'Total payout', v: fmtRbx(pay), s: `${fmtInt(P.length)} transfer` },
-      { l:'Saldo belum payout', v: fmtRbx(allR - allP), s: 'semua waktu (terjual − payout)' },
       { l:'Akun', v: fmtInt(db.accounts.length), s: stText },
+      { l:'Saldo Robux akun', v: fmtRbx(db.accounts.reduce((t,a) => t + calcSaldo(a), 0)), s: 'payout masuk − terjual' },
       { l:'Total sisa limit', v: fmtRbx(sisaLim), s: 'Robux, semua akun' },
     ].map(k => `<div class="card kpi ${k.hl?'hl':''}"><div class="lbl">${k.l}</div><div class="val num">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
 
@@ -846,7 +878,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
 
   // --- Sales ---
   function parseSales(line){
-    const out = { tanggal: today(), sumber: '', idPesanan: '', robux: '', pendapatan: '', raw: line, warn: [] };
+    const out = { tanggal: today(), sumber: '', idPesanan: '', pengirim: '', robux: '', pendapatan: '', raw: line, warn: [] };
     let rest = ' ' + line + ' ';
     const rules = [...db.settings.idRules].filter(r => r.prefix).sort((a,b) => b.prefix.length - a.prefix.length);
     for (const raw of line.split(/\s+/)){
@@ -859,6 +891,13 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
         if (rule) out.sumber = rule.sumber; else out.warn.push('ID tidak dikenali polanya — isi sumber');
         rest = rest.replace(tok, ' ');
         break;
+      }
+    }
+    // username pengirim: kata ber-@ atau username yang ada di tab Akun
+    for (const raw of rest.trim().split(/\s+/)){
+      const tok = raw.replace(/^[^\w@]+|[^\w]+$/g, '');
+      if ((tok.startsWith('@') && tok.length > 1) || (tok && findAcc(tok))){
+        out.pengirim = '@' + tok.replace(/^@+/, ''); rest = rest.replace(raw, ' '); break;
       }
     }
     let d; [d, rest] = takeDate(rest); if (d) out.tanggal = d;
@@ -876,8 +915,20 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
         (m = rest.match(new RegExp(`(?<![\\w])${NUM}(?![\\w])`)))) out.pendapatan = toNum(m[1], m[2]);
     if (out.robux === '') out.warn.push('Robux tidak terdeteksi');
     if (!out.sumber) out.warn.push('Sumber belum terdeteksi');
+    salesAccWarn(out).forEach(w => out.warn.push(w));
     if (out.idPesanan && db.sales.some(s => (s.idPesanan || '').toUpperCase() === out.idPesanan.toUpperCase())) out.warn.push('ID pesanan ini sudah pernah dicatat');
     return out;
+  }
+
+  // Peringatan saldo / limit akun pengirim (tidak memblokir simpan)
+  function salesAccWarn(r){
+    if (!r.pengirim) return ['Username pengirim belum diisi — saldo & limit akun tidak berubah'];
+    const a = findAcc(r.pengirim);
+    if (!a) return ['Username pengirim belum ada di tab Akun'];
+    const w = [], rb = +r.robux || 0;
+    if (rb > calcSaldo(a)) w.push(`Saldo ${a.username} cuma ${fmtInt(calcSaldo(a))} Robux`);
+    if (rb > calcSisa(a)) w.push(`Sisa limit ${a.username} cuma ${fmtInt(calcSisa(a))}`);
+    return w;
   }
 
   // --- Payout ---
@@ -892,6 +943,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       toks.find(t => /^[A-Za-z0-9_.]{2,}$/.test(t) && !/^\d+$/.test(t) && !PAYOUT_STOP.has(t.toLowerCase()));
     out.username = atUser(pick || '');
     if (!out.username) out.warn.push('Username tidak terdeteksi');
+    else if (!findAcc(out.username)) out.warn.push('Username belum ada di tab Akun — saldo tidak tercatat di akun');
     if (out.payout === '') out.warn.push('Jumlah payout tidak terdeteksi');
     return out;
   }
@@ -938,12 +990,12 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   const QUICK = {
     sales: {
       title: '⚡ Tambah cepat dari teks', noun: 'transaksi', parse: parseSales, extraBtn: '<button class="btn sm" id="btnRules">Pola ID pesanan</button>',
-      ph: 'Satu transaksi per baris. Contoh:\nhari ini OD000000155263605 3000 robux rp 200k\nkemarin GBX-261107-85F8F2 robux 2000 150rb\n1 nov facebook r 1000 75ribu',
+      ph: 'Satu transaksi per baris. Contoh:\nhari ini OD000000155263605 @aji 3000 robux rp 200k\nkemarin GBX-261107-85F8F2 budi robux 2000 150rb\n1 nov facebook @aji r 1000 75ribu',
       cols: [ {k:'tanggal',l:'Tanggal',type:'date',req:1,w:140}, {k:'sumber',l:'Sumber website',type:'text',list:'dl-sumber',req:1,w:130},
-              {k:'idPesanan',l:'ID pesanan',type:'text',ph:'(opsional)',w:170}, {k:'robux',l:'Robux',type:'number',req:1,w:100},
+              {k:'idPesanan',l:'ID pesanan',type:'text',ph:'(opsional)',w:170}, {k:'pengirim',l:'Username pengirim',type:'text',list:'dl-username',w:150}, {k:'robux',l:'Robux',type:'number',req:1,w:100},
               {k:'pendapatan',l:'Pendapatan (Rp)',type:'number',w:120} ],
       summary: rows => [['Total Robux', fmtInt(rows.reduce((s,r) => s + (+r.robux||0), 0))], ['Total pendapatan', fmtRp(rows.reduce((s,r) => s + (+r.pendapatan||0), 0))]],
-      fix: r => r,
+      fix: r => ({ ...r, pengirim: r.pengirim ? '@' + String(r.pengirim).trim().replace(/^@+/, '') : '' }),
     },
     payouts: {
       title: '⚡ Tambah cepat payout', noun: 'payout', parse: parsePayout,
