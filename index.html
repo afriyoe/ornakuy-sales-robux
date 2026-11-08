@@ -219,7 +219,6 @@
     <div class="toolbar">
       <h2>Ringkasan</h2>
       <div class="right">
-        <button class="btn" id="btnDemo">Data demo</button>
         <button class="btn" id="btnBackup">Backup / Restore</button>
       </div>
     </div>
@@ -259,13 +258,13 @@
   <section id="view-sales" hidden>
     <div class="toolbar">
       <h2>Sales</h2>
-      <div class="right">
-        <input class="f search" id="qSales" placeholder="Cari sumber / ID pesanan…">
-        <button class="btn primary" data-add="sales">+ Tambah sales</button>
-      </div>
     </div>
     <div class="card" id="salesRecap" style="margin-bottom:14px"></div>
     <div class="card quick" data-quick="sales" style="margin-bottom:14px"></div>
+    <div class="toolbar">
+      <input class="f search" style="flex:1;width:auto;min-width:180px" id="qSales" placeholder="Cari sumber / ID pesanan / pengirim…">
+      <button class="btn primary" data-add="sales">+ Tambah sales</button>
+    </div>
     <div class="card table-wrap"><table id="tblSales"></table></div>
   </section>
 
@@ -273,13 +272,13 @@
   <section id="view-payout" hidden>
     <div class="toolbar">
       <h2>Payout</h2>
-      <div class="right">
-        <input class="f search" id="qPayout" placeholder="Cari username…">
-        <button class="btn primary" data-add="payouts">+ Tambah payout</button>
-      </div>
     </div>
     <div class="card" id="saldoCard" style="margin-bottom:14px"></div>
     <div class="card quick" data-quick="payouts" style="margin-bottom:14px"></div>
+    <div class="toolbar">
+      <input class="f search" style="flex:1;width:auto;min-width:180px" id="qPayout" placeholder="Cari username…">
+      <button class="btn primary" data-add="payouts">+ Tambah payout</button>
+    </div>
     <div class="card table-wrap"><table id="tblPayout"></table></div>
   </section>
 
@@ -287,13 +286,13 @@
   <section id="view-akun" hidden>
     <div class="toolbar">
       <h2>Akun</h2>
-      <div class="right">
-        <input class="f search" id="qAkun" placeholder="Cari username / email…">
-        <button class="btn primary" data-add="accounts">+ Tambah akun</button>
-      </div>
     </div>
     <div class="kpis" id="akunRecap"></div>
     <div class="card quick" data-quick="accounts" style="margin-bottom:14px"></div>
+    <div class="toolbar">
+      <input class="f search" style="flex:1;width:auto;min-width:180px" id="qAkun" placeholder="Cari username / email…">
+      <button class="btn primary" data-add="accounts">+ Tambah akun</button>
+    </div>
     <div class="card table-wrap"><table id="tblAkun"></table></div>
     <p class="muted" style="font-size:12.5px;margin-top:10px">Klik sandi untuk menampilkan / menyembunyikan.</p>
   </section>
@@ -424,7 +423,11 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     db.settings = Object.assign(blank().settings, db.settings || {});
     if (!Array.isArray(db.settings.idRules)) db.settings.idRules = DEFAULT_RULES();
     if (!Array.isArray(db.snapshots)) db.snapshots = BASE_SNAP();
+    // bersihkan sisa data demo (id diawali "demo-")
+    let cleaned = 0;
+    ['sales','payouts','accounts'].forEach(k => { const n = db[k].length; db[k] = db[k].filter(r => !String(r.id || '').startsWith('demo-')); cleaned += n - db[k].length; });
     db.accounts.forEach(initLimit);
+    return cleaned;
   }
 
   // ---------- Limit akun: 10.000 per akun, pemakaian kembali setelah 31 hari ----------
@@ -708,11 +711,21 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
 
   // ---------- Diagram bulat ----------
   const PALETTE = ['#22c470','#4f8cff','#f5a524','#a855f7','#ec4899','#14b8a6','#ef4444','#94a3b8'];
+  // warna tetap per sumber website (sama di tabel, dashboard & diagram)
+  const SRC_COLORS = { itemku: '#22c470', indoblox: '#f5a524', facebook: '#4f8cff', discord: '#a855f7' };
+  const EXTRA_COLORS = ['#ec4899','#14b8a6','#ef4444','#06b6d4','#84cc16','#8b5cf6','#94a3b8'];
+  function srcColor(name){
+    const k = String(name || '').trim().toLowerCase();
+    if (SRC_COLORS[k]) return SRC_COLORS[k];
+    let h = 0; for (const c of k) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return EXTRA_COLORS[h % EXTRA_COLORS.length];
+  }
+  const srcPill = name => { const c = srcColor(name); return `<span class="pill" style="background:color-mix(in srgb, ${c} 18%, transparent);color:${c}">${esc(name || '—')}</span>`; };
   function donut(items, centerTop, centerSub){
     const total = items.reduce((t,x) => t + x.v, 0), R = 54, C = 2 * Math.PI * R;
     let off = 0;
     const arcs = total ? items.map((x,i) => { const len = x.v / total * C;
-      const a = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="22"
+      const a = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${x.c || PALETTE[i % PALETTE.length]}" stroke-width="22"
         stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(x.k)}: ${(x.v/total*100).toFixed(1)}%</title></circle>`;
       off += len; return a; }).join('') : `<circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--line)" stroke-width="22"/>`;
     return `<svg viewBox="0 0 140 140" width="150" height="150" role="img" aria-label="Persentase per sumber">${arcs}
@@ -725,7 +738,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const S = db.sales.filter(r => inRange(r.tanggal));
     const rbx = sumOf(S, 'robux'), rev = sumOf(S, 'pendapatan');
     const src = {}; S.forEach(r => { const k = r.sumber || 'Lainnya', o = src[k] ||= { r:0, n:0 }; o.r += +r.robux || 0; o.n++; });
-    const items = Object.entries(src).map(([k,o]) => ({ k, v: o.r, n: o.n })).sort((a,b) => b.v - a.v);
+    const items = Object.entries(src).map(([k,o]) => ({ k, v: o.r, n: o.n, c: srcColor(k) })).sort((a,b) => b.v - a.v);
     const tile = (l, v, sub, hl) => `<div class="kpi ${hl?'hl':''}" style="border:1px solid var(--line);border-radius:12px"><div class="lbl">${l}</div><div class="val num">${v}</div><div class="sub">${sub}</div></div>`;
     $('#salesRecap').innerHTML = `<div class="hd"><h3>Rekap sales <span class="muted" style="font-weight:500">· ${range.preset === 'all' ? 'semua waktu' : fmtDate(range.from) + ' – ' + fmtDate(range.to)}</span></h3></div>
       <div class="recap" style="padding-top:8px">
@@ -737,7 +750,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
         </div>
         <div><div class="muted" style="font-size:12px;font-weight:600;margin-bottom:8px">SUMBER (% dari Robux terkirim)</div>
           <div class="donut-wrap">${donut(items, items.length, 'sumber')}
-            <div class="donut-legend">${items.length ? items.map((x,i) => `<div><i style="background:${PALETTE[i % PALETTE.length]}"></i>
+            <div class="donut-legend">${items.length ? items.map((x,i) => `<div><i style="background:${x.c}"></i>
               <span>${esc(x.k)} <span class="muted">· ${x.n} pesanan</span></span><b class="num">${(x.v / (rbx || 1) * 100).toFixed(1)}%</b></div>`).join('') : '<span class="muted">Belum ada sales di rentang ini.</span>'}</div>
           </div></div>
       </div>`;
@@ -764,7 +777,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const tR = rows.reduce((s,r) => s + (+r.robux||0), 0), tP = rows.reduce((s,r) => s + (+r.pendapatan||0), 0);
     $('#tblSales').innerHTML = `<thead><tr><th>Tanggal</th><th>Sumber website</th><th>ID pesanan</th><th>Username pengirim</th><th class="r">Robux</th><th class="r">Pendapatan</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
-        <td>${fmtDate(r.tanggal)}</td><td><span class="pill src">${esc(r.sumber)}</span></td>
+        <td>${fmtDate(r.tanggal)}</td><td>${srcPill(r.sumber)}</td>
         <td class="num">${esc(r.idPesanan) || '<span class="muted">—</span>'}</td>
         <td>${r.pengirim ? `<b>${esc(r.pengirim)}</b>${findAcc(r.pengirim) ? '' : ' <span class="pill Pending" title="Belum ada di tab Akun">?</span>'}` : '<span class="muted">—</span>'}</td>
         <td class="r num">${fmtRbx(r.robux)}</td><td class="r num">${fmtRp(r.pendapatan)}</td>${actions('sales', r.id)}</tr>`).join('')
@@ -854,7 +867,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     S.forEach(r => { const o = src[r.sumber] ||= { n:0, r:0, rev:0 }; o.n++; o.r += +r.robux||0; o.rev += +r.pendapatan||0; });
     const srcRows = Object.entries(src).sort((a,b) => b[1].r - a[1].r);
     $('#tblSource').innerHTML = `<thead><tr><th>Sumber</th><th class="r">Pesanan</th><th class="r">Robux</th><th class="r">Pendapatan</th></tr></thead><tbody>${
-      srcRows.length ? srcRows.map(([k,o]) => `<tr><td><span class="pill src">${esc(k)}</span><span class="share"><span style="width:${rbx? o.r/rbx*100 : 0}%"></span></span></td>
+      srcRows.length ? srcRows.map(([k,o]) => `<tr><td>${srcPill(k)}<span class="share"><span style="width:${rbx? o.r/rbx*100 : 0}%;background:${srcColor(k)}"></span></span></td>
         <td class="r num">${fmtInt(o.n)}</td><td class="r num">${fmtRbx(o.r)}</td><td class="r num">${fmtRp(o.rev)}</td></tr>`).join('')
       : emptyRow(4, 'Belum ada sales di rentang ini.')}</tbody>`;
 
@@ -1325,7 +1338,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   function applyRemote(d){
     db = { ...blank(), ...db, sales: d.sales || [], payouts: d.payouts || [], accounts: d.accounts || [],
       snapshots: (d.snapshots && d.snapshots.length) ? d.snapshots : db.snapshots, settings: Object.assign({}, db.settings, d.settings || {}) };
-    normalize(); persistLocal(); renderAll();
+    const cleaned = normalize(); persistLocal(); renderAll();
+    if (cleaned) schedulePush();   // data demo lama di spreadsheet ikut dibersihkan
   }
   // Ambil dari spreadsheet. auto=true → otomatis (tidak menimpa data lokal kalau sheet masih kosong)
   async function pull(auto){
@@ -1552,55 +1566,6 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     });
     inp.addEventListener('blur', () => finish(true));
   });
-
-  // ---------- Data demo (semua id diawali "demo-" supaya bisa dihapus bersih) ----------
-  function makeDemo(){
-    const d = n => daysAgo(n), A = (u, st, extra) => ({ id: 'demo-acc-' + u, username: u, status: st, sandi: 'demo123', email: u + '.demo@gmail.com', sandiEmail: 'demoMail1', tglJoin: d(60), pemakaian: [], ...extra });
-    const accounts = [
-      A('aji', 'Limit 10k dan Plus'), A('budi', 'Limit 10k'), A('citra', 'Plus'), A('deni', 'Limit 10k'),
-      A('eko', 'Limit 10k', { pemakaian: [{ tanggal: d(10), jumlah: 10000 }] }),   // limit habis (koreksi manual) → contoh akun tidak siap
-    ];
-    const P = (n, u, v, i) => ({ id: 'demo-po-' + i, tanggal: d(n), username: '@' + u, payout: v });
-    const payouts = [ P(40,'aji',8000,1), P(35,'budi',6000,2), P(20,'citra',5000,3), P(10,'aji',4000,4), P(5,'deni',3000,5), P(2,'budi',2000,6) ];
-    const S = (n, src, idp, u, rbx, rp, i) => ({ id: 'demo-sl-' + i, tanggal: d(n), sumber: src, idPesanan: idp, pengirim: u ? '@' + u : '', robux: rbx, pendapatan: rp });
-    const sales = [
-      S(38, 'Itemku',   'OD000000155260011', 'aji',   2000, 150000, 1),   // > 31 hari → limitnya sudah kembali
-      S(31, 'Indoblox', 'GBX-261008-A1B2C3', 'budi',  2500, 185000, 2),   // limit balik BESOK
-      S(31, 'Facebook', '',                  'aji',   1000,  75000, 3),   // limit balik BESOK
-      S(25, 'Discord',  '',                  'budi',  1500, 110000, 4),
-      S(18, 'Itemku',   'OD000000155261234', 'citra', 3000, 225000, 5),
-      S(12, 'Itemku',   'OD000000155262345', 'aji',   2000, 150000, 6),
-      S(7,  'Indoblox', 'GBX-261101-D4E5F6', 'citra', 1000,  76000, 7),
-      S(3,  'Facebook', '',                  'deni',  1500, 112000, 8),
-      S(1,  'Itemku',   'OD000000155263605', 'aji',   2500, 190000, 9),
-      S(0,  'Discord',  '',                  '',      1000,  75000, 10),  // tanpa pengirim → tidak mengubah akun
-    ];
-    return { accounts, payouts, sales };
-  }
-  const isDemo = r => String(r.id || '').startsWith('demo-');
-  function openDemo(){
-    const n = ['sales','payouts','accounts'].reduce((t,k) => t + db[k].filter(isDemo).length, 0);
-    openModal('Data demo', `<p style="margin:0 0 10px">Isi contoh untuk mengecek alur kerja: <b>5 akun, 6 payout, 10 sales</b> dari Itemku, Indoblox, Facebook & Discord dengan tanggal 0–40 hari lalu (ada yang limitnya balik besok, ada akun yang limitnya habis, ada sales tanpa pengirim).</p>
-      <p class="muted" style="margin:0 0 10px;font-size:12.5px">Data demo ditambahkan di samping datamu (tidak menimpa) dan bisa dihapus bersih kapan saja. ${connected() ? '<b>Spreadsheet sedang tersambung</b> — data demo ikut terkirim ke sheet, dan ikut terhapus saat dihapus di sini.' : ''}</p>
-      ${n ? `<p style="margin:0"><b>${n}</b> data demo sedang terpasang.</p>` : ''}`,
-      `<button class="btn" data-close>Tutup</button>${n ? '<button class="btn danger" id="demoDel">Hapus data demo</button>' : ''}<button class="btn primary" id="demoAdd">${n ? 'Pasang ulang' : 'Isi data demo'}</button>`);
-    const strip = () => ['sales','payouts','accounts'].forEach(k => db[k] = db[k].filter(r => !isDemo(r)));
-    $('#demoAdd').onclick = () => {
-      const clash = makeDemo().accounts.filter(a => db.accounts.some(x => !isDemo(x) && ukey(x.username) === ukey(a.username)));
-      openModal('Isi data demo?', `<p style="margin:0">Akan ditambahkan 5 akun, 6 payout, dan 10 sales contoh.${clash.length ? ` <br><br><b>Perhatian:</b> username ${clash.map(a => a.username).join(', ')} sudah ada di akunmu — saldo & limitnya akan ikut terpengaruh data demo.` : ''}</p>`,
-        `<button class="btn" id="demoBack">Batal</button><button class="btn primary" id="demoGo">Yakin, isi</button>`);
-      $('#demoBack').onclick = openDemo;
-      $('#demoGo').onclick = () => { strip(); const dm = makeDemo(); db.accounts.push(...dm.accounts); db.payouts.push(...dm.payouts); db.sales.push(...dm.sales);
-        setRange(presetRange('all'), 'all'); save(); closeModal(); renderAll(); toast('Data demo dipasang'); };
-    };
-    if (n) $('#demoDel').onclick = () => {
-      openModal('Hapus data demo?', `<p style="margin:0">${n} data demo akan dihapus. Datamu sendiri tidak disentuh.</p>`,
-        `<button class="btn" id="demoBack2">Batal</button><button class="btn danger" id="demoDelGo">Yakin, hapus</button>`);
-      $('#demoBack2').onclick = openDemo;
-      $('#demoDelGo').onclick = () => { strip(); save(); closeModal(); renderAll(); toast('Data demo dihapus'); };
-    };
-  }
-  $('#btnDemo').onclick = openDemo;
 
   // ---------- Routing & events ----------
   const VIEWS = ['dashboard','sales','payout','akun'];
