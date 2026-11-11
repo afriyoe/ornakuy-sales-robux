@@ -759,15 +759,27 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   // ---------- Rekap Akun ----------
   function renderAkunRecap(){
     const A = db.accounts, besok = addDays(today(), 1);
-    const siap = A.filter(a => calcSisa(a) > 0).length;
     const saldo = A.reduce((t,a) => t + calcSaldo(a), 0), sisa = A.reduce((t,a) => t + calcSisa(a), 0);
-    const sisaBesok = A.reduce((t,a) => t + calcSisaAt(a, besok), 0), balik = sisaBesok - sisa;
+    // Total sisa limit hanya menghitung akun yang sudah 15 hari sejak join komunitas (tanpa tanggal join = dihitung)
+    const JOIN_WAIT = 15, tglAktif = a => a.tglJoin ? addDays(a.tglJoin, JOIN_WAIT) : '';
+    const aktifPada = (a, d) => !a.tglJoin || d >= tglAktif(a);
+    const totalSemua = sisa;
+    const aktif = A.filter(a => aktifPada(a, today()));
+    const sisaAktif = aktif.reduce((t,a) => t + calcSisa(a), 0);
+    // Akun siap pakai = sudah 15 hari join dan limit belum habis
+    const siap = aktif.filter(a => calcSisa(a) > 0).length;
+    const tunggu = A.filter(a => !aktifPada(a, today())).sort((x,y) => tglAktif(x).localeCompare(tglAktif(y)));
+    const next = tunggu[0] ? tglAktif(tunggu[0]) : '';
+    const nextN = tunggu.filter(a => tglAktif(a) === next).length;
+    const sisaBesok = A.filter(a => aktifPada(a, besok)).reduce((t,a) => t + calcSisaAt(a, besok), 0), balik = sisaBesok - sisaAktif;
     const card = (l, v, sub, hl) => `<div class="card kpi ${hl?'hl':''}"><div class="lbl">${l}</div><div class="val num">${v}</div><div class="sub">${sub}</div></div>`;
     $('#akunRecap').innerHTML =
-      card('Akun siap pakai', `${fmtInt(siap)}<span style="font-size:14px" class="muted"> / ${fmtInt(A.length)}</span>`, 'limit belum habis', true) +
+      card('Akun siap pakai', `${fmtInt(siap)}<span style="font-size:14px" class="muted"> / ${fmtInt(A.length)}</span>`, 'sudah 15 hari join & limit belum habis' + (tunggu.length ? `<br>${fmtInt(tunggu.length)} akun belum 15 hari` : ''), true) +
       card('Total saldo Robux', fmtInt(saldo), 'payout masuk − terjual') +
-      card('Total sisa limit', fmtInt(sisa), 'posisi hari ini') +
-      card('Limit balik besok', (balik > 0 ? '+' : '') + fmtInt(balik), `${fmtDate(besok)} · total jadi ${fmtInt(sisaBesok)}`);
+      card('Total sisa limit', fmtInt(sisaAktif), `${fmtInt(aktif.length)} akun sudah 15 hari join` +
+        (next ? `<br>+${fmtInt(nextN)} akun aktif ${fmtDate(next)}${tunggu.length > nextN ? ` (${fmtInt(tunggu.length - nextN)} lagi menyusul)` : ''}` : '')) +
+      card('Limit balik besok', (balik > 0 ? '+' : '') + fmtInt(balik), `${fmtDate(besok)} · total jadi ${fmtInt(sisaBesok)}`) +
+      card('Total limit semua akun', fmtInt(totalSemua), `${fmtInt(A.length)} akun · tanpa hitungan tanggal join`);
   }
 
   // ---------- Tables ----------
@@ -1128,7 +1140,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     },
     accounts: {
       title: '⚡ Tambah cepat akun', noun: 'akun', parse: parseAkun,
-      ph: 'Satu akun per baris: username sandi, lalu email sandi-email (status, sisa limit & tanggal join bebas posisinya). Contoh:\naji 4j1012569 aji123@gmail.com sandiEmail1 limit 10k plus sisa 5000 robux hari ini\nbudi b8udi99 budi@yahoo.co.id passBudi plus 14 nov 2026',
+      ph: 'username  sandi  email  sandi-email  status  sisa-limit  tanggal-join',
       cols: [ {k:'username',l:'Username',type:'text',req:1,w:130}, {k:'status',l:'Status',type:'text',list:'dl-status',w:160},
               {k:'sisaLimit',l:'Sisa limit',type:'number',ph:'10000',w:100}, {k:'sandi',l:'Sandi',type:'text',w:130}, {k:'email',l:'Email',type:'text',w:190},
               {k:'sandiEmail',l:'Sandi email',type:'text',w:130}, {k:'tglJoin',l:'Join komunitas',type:'date',w:140} ],
