@@ -81,6 +81,13 @@
   .pill.st-l{background:var(--amber-soft);color:var(--amber)}
   .pill.st-p{background:var(--blue-soft);color:var(--blue)}
   .pill.src{background:var(--blue-soft);color:var(--blue)}
+  .pill.wait{background:var(--amber-soft);color:var(--amber)}
+  .pill.empty{background:var(--red-soft);color:var(--red)}
+  th.sort{cursor:pointer;user-select:none;white-space:nowrap}
+  th.sort:hover{color:var(--text)}
+  th.sort .ar{opacity:.35;margin-left:4px;font-size:10px}
+  th.sort.on{color:var(--text)}
+  th.sort.on .ar{opacity:1}
 
   .secret{display:inline-flex;align-items:center;gap:4px}
   .secret .val{cursor:pointer;padding:2px 8px;border-radius:6px;background:var(--bg);border:1px dashed var(--line);user-select:none;min-width:90px;display:inline-block}
@@ -459,6 +466,10 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   const allActive = a => [...manualActive(a).map(u => ({ ...u, src: 'koreksi' })),
     ...salesOf(a).map(x => ({ tanggal: x.tanggal, jumlah: +x.robux || 0, src: 'sales' }))].filter(u => u.tanggal && u.jumlah && today() < releaseDate(u));
   const calcSisa = a => Math.max(0, Math.min(LIMIT_MAX, LIMIT_MAX - allActive(a).reduce((t,u) => t + u.jumlah, 0)));
+  // Akun baru bisa dipakai 15 hari setelah join komunitas (tanpa tanggal join = dianggap sudah bisa)
+  const JOIN_WAIT = 15, tglAktif = a => a.tglJoin ? addDays(a.tglJoin, JOIN_WAIT) : '';
+  const aktifPada = (a, d) => !a.tglJoin || d >= tglAktif(a);
+  const hariLagi = a => aktifPada(a, today()) ? 0 : Math.round((new Date(tglAktif(a) + 'T00:00') - new Date(today() + 'T00:00')) / 864e5);
   // sisa limit pada tanggal tertentu (mis. besok) — pemakaian yang sudah lewat 31 hari dianggap kembali
   const calcSisaAt = (a, d) => Math.max(0, Math.min(LIMIT_MAX, LIMIT_MAX - allActive(a).filter(u => d < releaseDate(u)).reduce((t,u) => t + u.jumlah, 0)));
   // Ubah sisa limit sekarang ke nilai baru → catat pemakaian (turun) atau koreksi (naik, dikurangi dari pemakaian terbaru)
@@ -534,7 +545,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     ]},
     accounts: { title: 'Akun', fields: [
       { k:'username', label:'Username', type:'text', req:true, fix: v => v.replace(/^@+/, '') },
-      { k:'status', label:'Status', type:'text', list:'dl-status', ph:'Limit 10k dan Plus / Limit 10k / Plus' },
+      { k:'status', label:'Kategori', type:'text', list:'dl-status', ph:'Limit 10k dan Plus / Limit 10k / Plus' },
       { k:'sisaLimit', label:'Sisa limit (Robux)', type:'number', keepBlank:true, ph:'kosong = 10.000' },
       { k:'sandi', label:'Sandi', type:'password' },
       { k:'email', label:'Email', type:'email' },
@@ -761,8 +772,6 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const A = db.accounts, besok = addDays(today(), 1);
     const saldo = A.reduce((t,a) => t + calcSaldo(a), 0), sisa = A.reduce((t,a) => t + calcSisa(a), 0);
     // Total sisa limit hanya menghitung akun yang sudah 15 hari sejak join komunitas (tanpa tanggal join = dihitung)
-    const JOIN_WAIT = 15, tglAktif = a => a.tglJoin ? addDays(a.tglJoin, JOIN_WAIT) : '';
-    const aktifPada = (a, d) => !a.tglJoin || d >= tglAktif(a);
     const totalSemua = sisa;
     const aktif = A.filter(a => aktifPada(a, today()));
     const sisaAktif = aktif.reduce((t,a) => t + calcSisa(a), 0);
@@ -823,17 +832,40 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     return `<span class="inl" data-inl="${a.id}" title="Klik untuk ubah${sched ? '\n\nJadwal kembali:\n' + esc(sched) : ''}">${fmtInt(calcSisa(a))}</span>` +
       (next ? `<span class="lim-next">↺ +${fmtInt(next.jumlah)} · ${fmtDate(next.r)}${act.length > 1 ? ` (+${act.length - 1} lagi)` : ''}</span>` : '');
   }
+  // Status siap pakai: 0 = siap, angka = hari lagi, -1 = limit habis
+  const siapVal = a => { const h = hariLagi(a); return h > 0 ? h : (calcSisa(a) > 0 ? 0 : -1); };
+  function siapCell(a){
+    const h = hariLagi(a);
+    if (h > 0) return `<span class="pill wait" title="Siap pakai ${fmtDate(tglAktif(a))}">${h} hari lagi</span>`;
+    return calcSisa(a) > 0 ? '<span class="pill st-lp">Siap pakai</span>' : '<span class="pill empty">Limit habis</span>';
+  }
+  const AKUN_COLS = [
+    { k:'username', l:'Username', v: a => (a.username||'').toLowerCase() },
+    { k:'siap', l:'Status', v: a => { const x = siapVal(a); return x < 0 ? 1e6 : x; } },
+    { k:'status', l:'Kategori', v: a => (a.status||'').toLowerCase() },
+    { k:'saldo', l:'Saldo Robux', r:1, v: a => calcSaldo(a) },
+    { k:'sisa', l:'Sisa limit', r:1, v: a => calcSisa(a) },
+    { k:'sandi', l:'Sandi' }, { k:'email', l:'Email', v: a => (a.email||'').toLowerCase() }, { k:'sandiEmail', l:'Sandi email' },
+    { k:'tglJoin', l:'Join komunitas', v: a => a.tglJoin || '' },
+  ];
+  let akunSort = { k:'username', dir:1 };
   function renderAkun(){
     if (!akunOpen){ $('#tblAkun').innerHTML = ''; return; }
     const q = $('#qAkun').value.toLowerCase().trim();
+    const col = AKUN_COLS.find(c => c.k === akunSort.k) || AKUN_COLS[0];
     const rows = db.accounts.filter(r => !q || `${r.username} ${r.email}`.toLowerCase().includes(q))
-      .sort((a,b) => (a.username||'').localeCompare(b.username||''));
-    $('#tblAkun').innerHTML = `<thead><tr><th>Username</th><th>Status</th><th class="r">Saldo Robux</th><th class="r">Sisa limit</th><th>Sandi</th><th>Email</th><th>Sandi email</th><th>Join komunitas</th><th></th></tr></thead>
+      .sort((a,b) => { const x = col.v(a), y = col.v(b);
+        const c = typeof x === 'number' ? x - y : String(x).localeCompare(String(y));
+        return (c || (a.username||'').localeCompare(b.username||'')) * (c ? akunSort.dir : 1); });
+    const head = AKUN_COLS.map(c => c.v
+      ? `<th class="sort ${c.r?'r':''} ${akunSort.k===c.k?'on':''}" data-sort="${c.k}" title="Klik untuk urutkan">${c.l}<span class="ar">${akunSort.k===c.k ? (akunSort.dir>0?'▲':'▼') : '↕'}</span></th>`
+      : `<th>${c.l}</th>`).join('');
+    $('#tblAkun').innerHTML = `<thead><tr>${head}<th></th></tr></thead>
       <tbody>${rows.length ? rows.map(r => `<tr>
-        <td><b>${esc(r.username)}</b></td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${saldoCell(r)}</td><td class="r num">${limitCell(r)}</td>
+        <td><b>${esc(r.username)}</b></td><td>${siapCell(r)}</td><td>${r.status ? `<span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>` : '<span class="muted">—</span>'}</td><td class="r num">${saldoCell(r)}</td><td class="r num">${limitCell(r)}</td>
         <td>${secret(r.sandi)}</td><td>${secret(r.email)}</td><td>${secret(r.sandiEmail)}</td>
         <td>${fmtDate(r.tglJoin)}</td>${actions('accounts', r.id)}</tr>`).join('')
-        : emptyRow(9, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
+        : emptyRow(10, q ? 'Tidak ada yang cocok.' : 'Belum ada akun. Klik “+ Tambah akun”.')}</tbody>`;
   }
 
   // ---------- Dashboard ----------
@@ -1140,8 +1172,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     },
     accounts: {
       title: '⚡ Tambah cepat akun', noun: 'akun', parse: parseAkun,
-      ph: 'username  sandi  email  sandi-email  status  sisa-limit  tanggal-join',
-      cols: [ {k:'username',l:'Username',type:'text',req:1,w:130}, {k:'status',l:'Status',type:'text',list:'dl-status',w:160},
+      ph: 'username  sandi  email  sandi-email  kategori  sisa-limit  tanggal-join',
+      cols: [ {k:'username',l:'Username',type:'text',req:1,w:130}, {k:'status',l:'Kategori',type:'text',list:'dl-status',w:160},
               {k:'sisaLimit',l:'Sisa limit',type:'number',ph:'10000',w:100}, {k:'sandi',l:'Sandi',type:'text',w:130}, {k:'email',l:'Email',type:'text',w:190},
               {k:'sandiEmail',l:'Sandi email',type:'text',w:130}, {k:'tglJoin',l:'Join komunitas',type:'date',w:140} ],
       summary: rows => [['Total sisa limit (Robux)', fmtInt(rows.reduce((s,r) => s + (r.sisaLimit === '' ? LIMIT_MAX : +r.sisaLimit||0), 0))]],
@@ -1555,6 +1587,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   // ---------- Edit langsung sisa limit (tab Akun) ----------
   // klik angka → ketik → Enter / klik di luar = simpan, Esc = batal. Bisa tulis "5k", "5000 rbx", dst.
   $('#tblAkun').addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]');
+    if (th){ const k = th.dataset.sort; akunSort = { k, dir: akunSort.k === k ? -akunSort.dir : 1 }; renderAkun(); return; }
     const sp = e.target.closest('[data-inl]'); if (!sp || sp.querySelector('input')) return;
     const acc = db.accounts.find(a => a.id === sp.dataset.inl); if (!acc) return;
     const inp = document.createElement('input');
