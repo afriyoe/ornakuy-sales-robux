@@ -1528,6 +1528,90 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     };
   }
 
+  // ---------- Sambungan saldo grup ke dashboard ORNA UGC (sheet "Saldo Robux") ----------
+  // Sheet "Saldo Robux" milik dashboard UGC jadi acuan bersama: catatan baru di salah satu dashboard muncul di keduanya.
+  const UGC_LINK = 'ornakuy-ugc-link';
+  const UGC_URL0 = 'https://script.google.com/macros/s/AKfycbxMBlaPr26jCvTvnl-BM6d8PI6PKo0A5j3ueLraeUunlmWhh-Ywfcc3Ld6sRLwz8YgFwg/exec';
+  const UGC_HEAD = ['Waktu (WIB)','Saldo / Community Funds (R$)','Pending (R$)','Rate (Rp per R$)','Catatan','Publishing Advance Rebates kumulatif (R$)','Community Revenue Payouts kumulatif (R$)'];
+  const ugc = { known: null, err: false, msg: '', busy: false, timer: null };
+  function ugcCfg(){
+    let c = null;
+    try { c = JSON.parse(localStorage.getItem(UGC_LINK) || 'null'); } catch(e){}
+    // dashboard UGC ada di domain yang sama (afriyoe.github.io), jadi kuncinya bisa dipakai langsung
+    if (c && c.off) return { url: UGC_URL0, key: '' };
+    if (!c || !c.key){ try { c = JSON.parse(localStorage.getItem('ornakuy-sheet') || 'null'); } catch(e){} }
+    return { url: (c && c.url) || UGC_URL0, key: (c && c.key) || '' };
+  }
+  const ugcOn = () => !!ugcCfg().key;
+  const rNum = v => typeof v === 'number' ? Math.round(v) : (Math.round(+String(v ?? '').replace(/[^\d]/g, '')) || 0);
+  const snapT = x => x.t || (String(x.id || '').startsWith('ugc-') ? String(x.id).slice(4) : (x.tanggal || '') + ' 12:00');
+  const snapFromRec = x => ({ id: 'ugc-' + x.t, t: x.t, tanggal: x.t.slice(0,10), funds: x.s, pending: x.p, revenuePayouts: x.po || 0 });
+  async function ugcRead(){
+    const c = ugcCfg();
+    const r = await fetch(c.url + (c.url.includes('?') ? '&' : '?') + new URLSearchParams({ action: 'read', key: c.key }));
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Gagal membaca');
+    const S = (j.sheets || {})['Saldo Robux'] || [];
+    return S.slice(1).map(r => ({ t: String(r[0] || '').replace('T', ' ').slice(0,16), s: rNum(r[1]), p: rNum(r[2]), rate: rNum(r[3]) || 125, note: String(r[4] || ''),
+      rb: r[5] === '' || r[5] == null ? null : rNum(r[5]), po: r[6] === '' || r[6] == null ? null : Math.abs(rNum(r[6])) })).filter(x => /^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(x.t));
+  }
+  const ugcFail = e => { ugc.err = true; ugc.msg = e instanceof TypeError ? 'Tidak bisa terhubung ke Apps Script UGC' : (e.message || 'Error'); renderSaldo(); };
+  const snapSig = L => JSON.stringify(L.map(x => [snapT(x), +x.funds || 0, +x.pending || 0, Math.abs(+x.revenuePayouts || 0)]).sort());
+  // Ambil catatan dari sheet UGC → ganti saldo grup di sini
+  async function ugcPull(){
+    if (!ugcOn() || ugc.busy) return;
+    try {
+      const recs = await ugcRead(); ugc.err = false; ugc.msg = 'Sinkron ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      if (!recs.length && db.snapshots.length){ ugc.known = []; await ugcPush(true); return; }   // sheet UGC masih kosong → isi dari sini
+      ugc.known = recs.map(x => x.t);
+      const snaps = recs.map(snapFromRec);
+      if (snapSig(snaps) !== snapSig(db.snapshots)){ db.snapshots = snaps; save(); renderAll(); } else renderSaldo();
+    } catch(e){ ugcFail(e); }
+  }
+  // Kirim saldo grup di sini ke sheet UGC (dibaca ulang dulu supaya catatan baru dari UGC tidak tertimpa)
+  async function ugcPush(now){
+    if (!ugcOn()) return;
+    if (!now){ clearTimeout(ugc.timer); ugc.timer = setTimeout(() => ugcPush(true), 800); return; }
+    ugc.busy = true;
+    try {
+      const recs = await ugcRead(), byT = new Map(recs.map(x => [x.t, x])), known = new Set(ugc.known || recs.map(x => x.t));
+      const mine = new Map(db.snapshots.map(x => [snapT(x), x]));
+      const out = [];
+      mine.forEach((x, t) => { const o = byT.get(t) || {};
+        out.push({ t, s: +x.funds || 0, p: +x.pending || 0, rate: o.rate || 125, note: o.note || '', rb: o.rb ?? null, po: x.revenuePayouts ? Math.abs(+x.revenuePayouts) : (o.po ?? null) }); });
+      recs.forEach(x => { if (!mine.has(x.t) && !known.has(x.t)) out.push(x); });   // catatan baru dari UGC tetap disimpan
+      out.sort((a,b) => a.t.localeCompare(b.t));
+      const c = ugcCfg();
+      const r = await fetch(c.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'write', key: c.key,
+        sheets: { 'Saldo Robux': { header: UGC_HEAD, text: [0, 4], rows: out.map(x => [x.t, x.s, x.p, x.rate, x.note, x.rb == null ? '' : x.rb, x.po == null ? '' : x.po]) } } }) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Gagal menyimpan ke UGC');
+      ugc.known = out.map(x => x.t); ugc.err = false; ugc.msg = 'Terkirim ke UGC ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const snaps = out.map(snapFromRec);
+      if (snapSig(snaps) !== snapSig(db.snapshots)){ db.snapshots = snaps; save(); renderAll(); } else renderSaldo();
+      toast('Saldo grup tersinkron ke ORNA UGC');
+    } catch(e){ ugcFail(e); }
+    finally { ugc.busy = false; }
+  }
+  setInterval(() => { if (ugcOn() && !$('#app').hidden && document.visibilityState === 'visible' && !overlay.classList.contains('open')) ugcPull(); }, 120000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('#app').hidden) ugcPull(); });
+  function openUgcLink(){
+    const c = ugcCfg();
+    openModal('Sambungkan saldo grup ke ORNA UGC', `
+      <p class="muted" style="margin:0 0 12px">Saldo grup (Community Funds, pending, payouts) dibaca dan disimpan ke sheet <b>Saldo Robux</b> milik dashboard ORNA UGC, jadi update screenshot di salah satu dashboard ikut berubah di dashboard lain.${ugc.msg ? '<br>Status: ' + esc(ugc.msg) : ''}</p>
+      <div class="field"><label>Web App URL dashboard UGC</label><input class="f" id="ugcUrl" value="${esc(c.url)}"></div>
+      <div class="field"><label>Kunci (sama dengan kunci di dashboard UGC)</label><input class="f" type="password" id="ugcKey" value="${esc(c.key)}" autocomplete="off"></div>
+      <div class="err" id="ugcErr"></div>`,
+      `<button class="btn" data-close>Tutup</button>${c.key ? '<button class="btn" id="ugcOff">Putuskan</button>' : ''}<button class="btn primary" id="ugcGo">Simpan &amp; sinkron</button>`);
+    $('#ugcGo').onclick = async () => {
+      const v = { url: $('#ugcUrl').value.trim(), key: $('#ugcKey').value };
+      if (!v.url || !v.key){ $('#ugcErr').textContent = 'Isi URL dan kunci.'; return; }
+      try { localStorage.setItem(UGC_LINK, JSON.stringify(v)); } catch(e){}
+      $('#ugcErr').textContent = 'Menyambungkan…'; ugc.known = null;
+      await ugcPull();
+      if (ugc.err) $('#ugcErr').textContent = 'Gagal: ' + ugc.msg; else { closeModal(); toast('Tersambung ke ORNA UGC'); }
+    };
+    if ($('#ugcOff')) $('#ugcOff').onclick = () => { try { localStorage.setItem(UGC_LINK, JSON.stringify({ off: true })); } catch(e){} ugc.err = false; ugc.msg = ''; closeModal(); renderSaldo(); toast('Sambungan UGC diputus'); };
+  }
+
   // ---------- Saldo grup Roblox (acuan dari screenshot) ----------
   const latestSnap = () => [...db.snapshots].sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''))[0];
   const daysSince = d => Math.floor((new Date(today() + 'T00:00') - new Date(d + 'T00:00')) / 864e5);
@@ -1544,7 +1628,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const nextDate = (() => { const d = new Date(s.tanggal + 'T00:00'); d.setDate(d.getDate() + REMIND_DAYS); return isoDate(d); })();
     const tile = (l, v, sub, hl) => `<div class="kpi ${hl?'hl':''}" style="border:1px solid var(--line);border-radius:12px"><div class="lbl">${l}</div><div class="val num">${v}</div><div class="sub">${sub}</div></div>`;
     box.innerHTML = `<div class="hd"><h3>Saldo grup ORNA <span class="muted" style="font-weight:500">· acuan screenshot ${fmtDate(s.tanggal)}</span></h3>
-        <div class="row-gap"><button class="btn sm primary" data-saldo-shot>Update dari screenshot</button><button class="btn sm" data-saldo-manual>Isi manual</button><button class="btn sm" data-saldo-hist>Riwayat</button></div></div>
+        <div class="row-gap"><button class="btn sm primary" data-saldo-shot>Update dari screenshot</button><button class="btn sm" data-saldo-manual>Isi manual</button><button class="btn sm" data-saldo-hist>Riwayat</button><button class="btn sm" data-ugc-link title="${esc(ugc.msg)}">${ugcOn() ? (ugc.err ? '⚠ UGC gagal sinkron' : '🔗 Tersambung ORNA UGC') : 'Sambungkan ke ORNA UGC'}</button></div></div>
       <div class="bd"><div class="kpis" style="margin:0">
         ${tile('Community Funds', fmtInt(s.funds), 'di screenshot', true)}
         ${tile('Community Revenue Payouts', fmtInt(Math.abs(+s.revenuePayouts||0)), 'di screenshot')}
@@ -1584,6 +1668,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
         <div class="muted" id="ocrMsg" style="font-size:12.5px;margin-top:6px"></div></div>` : ''}
       <div class="field"><label>Tanggal screenshot</label><input class="f" type="date" id="sdTgl" value="${esc(v.tanggal)}"></div>
       <div class="field"><label>Community Funds</label><input class="f num" type="number" min="0" id="sdFunds" value="${esc(v.funds)}"></div>
+      <div class="field"><label>Pending Robux</label><input class="f num" type="number" min="0" id="sdPend" value="${esc(v.pending)}"></div>
       <div class="field"><label>Community Revenue Payouts</label><input class="f num" type="number" min="0" id="sdRev" value="${esc(v.revenuePayouts)}"></div>
       <div class="err" id="sdErr"></div>`,
       `<button class="btn" data-close>Batal</button><button class="btn primary" id="sdSave">Simpan</button>`);
@@ -1600,6 +1685,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
           const r = parseSaldoText(data.text || '');
           if (r.funds != null) $('#sdFunds').value = r.funds;
           if (r.revenuePayouts != null) $('#sdRev').value = r.revenuePayouts;
+          if (r.pending != null) $('#sdPend').value = r.pending;
           $('#sdTgl').value = today();
           const got = ['funds','revenuePayouts'].filter(k => r[k] != null).length;
           $('#ocrMsg').textContent = got === 2 ? '✓ Semua angka terbaca — cek lagi sebelum simpan.' : `${got} dari 2 angka terbaca — lengkapi yang kosong secara manual.`;
@@ -1621,14 +1707,16 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       document.addEventListener('paste', pasteHandler);
     }
     $('#sdSave').onclick = () => {
-      const nv = { tanggal: $('#sdTgl').value, funds: +$('#sdFunds').value || 0, revenuePayouts: +$('#sdRev').value || 0 };
+      const nv = { tanggal: $('#sdTgl').value, funds: +$('#sdFunds').value || 0, pending: +$('#sdPend').value || 0, revenuePayouts: +$('#sdRev').value || 0 };
       if (!nv.tanggal || $('#sdFunds').value === ''){ $('#sdErr').textContent = 'Tanggal dan Community Funds wajib diisi.'; return; }
       const row = (l, a, b) => `<div><span class="muted">${l}</span><span>${a === '' || a == null ? '' : `<span class="old">${fmtInt(a)}</span> → `}<span class="new">${fmtInt(b)}</span></span></div>`;
       openModal('Simpan saldo baru?', `<p style="margin:0 0 8px">Jadi acuan baru per ${fmtDate(nv.tanggal)}:</p><div class="diff">
         ${row('Funds', s.funds, nv.funds)}${row('Rev. Payouts', s.revenuePayouts == null ? '' : Math.abs(s.revenuePayouts), nv.revenuePayouts)}</div>`,
         `<button class="btn" id="sdBack">Batal</button><button class="btn primary" id="sdYakin">Yakin, simpan</button>`);
       $('#sdBack').onclick = () => openSaldo(mode, nv);
-      $('#sdYakin').onclick = () => { db.snapshots.push({ id: uid(), ...nv }); save(); closeModal(); renderAll(); toast('Saldo grup diperbarui'); };
+      $('#sdYakin').onclick = () => { const t = nv.tanggal === today() ? nv.tanggal + ' ' + new Date().toTimeString().slice(0,5) : nv.tanggal + ' 12:00';
+        db.snapshots = db.snapshots.filter(x => snapT(x) !== t); db.snapshots.push({ id: 'ugc-' + t, t, ...nv });
+        save(); closeModal(); renderAll(); toast('Saldo grup diperbarui'); ugcPush(); };
     };
   }
 
@@ -1643,13 +1731,14 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       const id = b.dataset.snapdel;
       openModal('Hapus data saldo ini?', `<p style="margin:0">Data saldo ini akan dihapus permanen.</p>`, `<button class="btn" id="snBack">Batal</button><button class="btn danger" id="snGo">Yakin, hapus</button>`);
       $('#snBack').onclick = openSaldoHist;
-      $('#snGo').onclick = () => { db.snapshots = db.snapshots.filter(x => x.id !== id); save(); renderAll(); openSaldoHist(); };
+      $('#snGo').onclick = () => { db.snapshots = db.snapshots.filter(x => x.id !== id); save(); renderAll(); openSaldoHist(); ugcPush(); };
     });
   }
   document.addEventListener('click', e => {
     if (e.target.closest('[data-saldo-shot]')) openSaldo('shot');
     else if (e.target.closest('[data-saldo-manual]')) openSaldo('manual');
     else if (e.target.closest('[data-saldo-hist]')) openSaldoHist();
+    else if (e.target.closest('[data-ugc-link]')) openUgcLink();
   });
   $('#btnSync').onclick = openSync;
 
@@ -1712,7 +1801,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   window.addEventListener('hashchange', route);
 
   load(); persistLocal(); setSync(connected() ? 'ok' : 'off');
-  setupLock(() => { route(); renderAll(); if (connected()) pull(true); });
+  setupLock(async () => { route(); renderAll(); if (connected()) await pull(true); ugcPull(); });
 })();
 </script>
 </body>
