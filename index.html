@@ -421,7 +421,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
 
   // ---------- Storage ----------
   let storageOk = true;
-  const DEFAULT_RULES = () => [ { prefix:'OD', sumber:'Itemku' }, { prefix:'GBX-', sumber:'Indoblox' } ];
+  const DEFAULT_RULES = () => [ { prefix:'OD', sumber:'Itemku' }, { prefix:'GBX-', sumber:'Indoblox' }, { prefix:'TRXOD-', sumber:'VCGamers' } ];
   // acuan awal dari screenshot halaman Revenue grup ORNA (8 Nov 2026)
   const BASE_SNAP = () => [{ id: 'base-20261108', tanggal: '2026-11-08', funds: 73145, pending: 685313, revenuePayouts: 3200 }];
   const blank = () => ({ sales: [], payouts: [], accounts: [], snapshots: BASE_SNAP(), settings: { target: 100000, idRules: DEFAULT_RULES() } });
@@ -429,6 +429,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   function normalize(){
     db.settings = Object.assign(blank().settings, db.settings || {});
     if (!Array.isArray(db.settings.idRules)) db.settings.idRules = DEFAULT_RULES();
+    // pola VCGamers ditambahkan otomatis untuk data lama
+    if (!db.settings.idRules.some(r => /^trx/i.test(r.prefix || ''))) db.settings.idRules.push({ prefix:'TRXOD-', sumber:'VCGamers' });
     if (!Array.isArray(db.snapshots)) db.snapshots = BASE_SNAP();
     // bersihkan sisa data demo (id diawali "demo-")
     let cleaned = 0;
@@ -984,7 +986,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     juni:6, june:6, jun:6, juli:7, july:7, jul:7, agustus:8, august:8, agus:8, agt:8, agu:8, aug:8, september:9, sept:9, sep:9,
     oktober:10, october:10, okt:10, oct:10, november:11, nov:11, desember:12, december:12, des:12, dec:12 };
   const MONTH_RE = Object.keys(MONTHS).sort((a,b) => b.length - a.length).join('|');
-  const SRC_ALIASES = { fb: 'Facebook', facebook: 'Facebook', discord: 'Discord', itemku: 'Itemku', indoblox: 'Indoblox' };
+  const SRC_ALIASES = { fb: 'Facebook', facebook: 'Facebook', discord: 'Discord', itemku: 'Itemku', indoblox: 'Indoblox', vcgamers: 'VCGamers', vcg: 'VCGamers' };
   const NUM = '(\\d+(?:[.,]\\d+)*)';
   const MULT = { k:1e3, rb:1e3, ribu:1e3, jt:1e6, juta:1e6 };
   const MONEY_TOKEN = /^(rp\.?|r\$|r|robux|robus|robuk|rbux|rbx)?[\d.,]+(k|rb|ribu|jt|juta|robux|robus|robuk|rbux|rbx)?$/i;
@@ -1046,7 +1048,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const out = { tanggal: today(), sumber: '', idPesanan: '', pengirim: '', robux: '', pendapatan: '', raw: line, warn: [] };
     let rest = ' ' + line + ' ';
     const rules = [...db.settings.idRules].filter(r => r.prefix).sort((a,b) => b.prefix.length - a.prefix.length);
-    for (const raw of line.split(/\s+/)){
+    for (const raw of line.split(/[\s,;]+/)){
       const tok = raw.replace(/^[^\w]+|[^\w]+$/g, '');
       if (!tok || MONEY_TOKEN.test(tok) || !/^[A-Za-z0-9-]+$/.test(tok)) continue;
       const rule = rules.find(r => tok.toUpperCase().startsWith(r.prefix.toUpperCase()) && tok.length > r.prefix.length + 3);
@@ -1083,6 +1085,65 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     salesAccWarn(out).forEach(w => out.warn.push(w));
     if (out.idPesanan && db.sales.some(s => (s.idPesanan || '').toUpperCase() === out.idPesanan.toUpperCase())) out.warn.push('ID pesanan ini sudah pernah dicatat');
     return out;
+  }
+
+  // --- Import export transaksi VCGamers (.csv atau teks yang ditempel) ---
+  function csvRows(text){
+    const rows = []; let row = [], cell = '', q = false;
+    for (let i = 0; i < text.length; i++){
+      const ch = text[i];
+      if (q){ if (ch === '"'){ if (text[i+1] === '"'){ cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ','){ row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r'){ if (ch === '\r' && text[i+1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell !== '' || row.length){ row.push(cell); rows.push(row); }
+    return rows.map(r => r.map(c => c.trim())).filter(r => r.some(Boolean));
+  }
+  const VCG_COLS = ['Tanggal Dibuat','Tanggal Selesai Pesanan','Transaction ID','Order ID','ID SKU','Buyer Name','Feature','Product Kategori','Product Brand','Product Group','Nama Varian','Harga Jual','Jumlah Pesanan','Total Pembayaran','Biaya Penjual','Status','Catatan','Alasan Pembatalan'];
+  const isVcgRow = r => r.length >= 15 && /^TRX/i.test(r[2] || '') && /^TRXOD-/i.test(r[3] || '');
+  const looksVcg = text => /Transaction ID.*Order ID/i.test(text) || csvRows(text).some(isVcgRow);
+  function parseVcg(text){
+    let rows = csvRows(text), idx = {};
+    const hi = rows.findIndex(r => r.includes('Order ID') && r.includes('Nama Varian'));
+    const head = hi > -1 ? rows[hi] : VCG_COLS;
+    head.forEach((h, i) => idx[h] = i);
+    rows = rows.slice(hi + 1);
+    const g = (r, k) => (r[idx[k]] ?? '').trim();
+    const out = []; let skipped = 0, dup = 0;
+    rows.forEach(r => {
+      if (!g(r, 'Order ID')) return;
+      const status = g(r, 'Status');
+      if (g(r, 'Alasan Pembatalan') || /batal|cancel|gagal|refund/i.test(status)){ skipped++; return; }
+      const dm = g(r, 'Tanggal Dibuat').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      const tanggal = dm ? validDate(+dm[3] < 100 ? 2000 + +dm[3] : +dm[3], +dm[2], +dm[1]) : today();
+      const vm = g(r, 'Nama Varian').match(/(\d+(?:[.,]\d+)*)\s*(k|rb|ribu)?/i);
+      const qty = +g(r, 'Jumlah Pesanan') || 1;
+      const robux = vm ? toNum(vm[1], vm[2]) * qty : '';
+      const bayar = toNum(g(r, 'Total Pembayaran') || '0'), biaya = toNum(g(r, 'Biaya Penjual') || '0');
+      const o = { tanggal: tanggal || today(), sumber: 'VCGamers', idPesanan: g(r, 'Order ID'), pengirim: '', robux, pendapatan: bayar - biaya,
+        raw: `${g(r, 'Nama Varian')} · ${g(r, 'Buyer Name')} · ${(g(r, 'Catatan').match(/Username Roblox:\s*([^;]+)/i) || [])[1] || ''} · ${status}`, warn: [] };
+      if (robux === '') o.warn.push('Robux tidak terdeteksi dari Nama Varian');
+      if (db.sales.some(s => (s.idPesanan || '').toUpperCase() === o.idPesanan.toUpperCase())){ dup++; return; }
+      out.push(o);
+    });
+    return { rows: out, skipped, dup };
+  }
+  // Daftar format file import sales. Tambah format baru di sini: { nama, cocok(teks), baca(teks) }
+  const IMPORTERS = [
+    { nama: 'VCGamers (TRX)', cocok: looksVcg, baca: parseVcg },
+  ];
+  const findImporter = text => IMPORTERS.find(f => f.cocok(text));
+  function loadImport(text){
+    const f = findImporter(text);
+    if (!f){ toast('Format file belum dikenali (saat ini: ' + IMPORTERS.map(x => x.nama).join(', ') + ')'); return false; }
+    const { rows, skipped, dup } = f.baca(text);
+    const info = [dup && `${dup} sudah tercatat`, skipped && `${skipped} dibatalkan`].filter(Boolean).join(', ');
+    if (!rows.length){ toast(info ? `Tidak ada transaksi baru (${info})` : `Tidak ada transaksi terbaca dari file ${f.nama}`); return false; }
+    quickRows.sales = rows; renderQuick('sales');
+    toast(`${f.nama}: ${rows.length} transaksi baru terbaca${info ? ` · dilewati: ${info}` : ''} — isi pengirim lalu simpan`);
+    return true;
   }
 
   // Peringatan saldo / limit akun pengirim (tidak memblokir simpan)
@@ -1154,7 +1215,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   // ---------- Tambah cepat: tampilan & simpan ----------
   const QUICK = {
     sales: {
-      title: '⚡ Tambah cepat dari teks', noun: 'transaksi', parse: parseSales, extraBtn: '<button class="btn sm" id="btnRules">Pola ID pesanan</button>',
+      title: '⚡ Tambah cepat dari teks', noun: 'transaksi', parse: parseSales, extraBtn: '<button class="btn sm" id="btnRules">Pola ID pesanan</button>', importBtn: true,
       ph: 'Satu transaksi per baris. Contoh:\nhari ini OD000000155263605 @aji 3000 robux rp 200k\nkemarin GBX-261107-85F8F2 budi robux 2000 150rb\n1 nov facebook @aji r 1000 75ribu',
       cols: [ {k:'tanggal',l:'Tanggal',type:'date',req:1,w:140}, {k:'sumber',l:'Sumber website',type:'text',list:'dl-sumber',req:1,w:130},
               {k:'idPesanan',l:'ID pesanan',type:'text',ph:'(opsional)',w:170}, {k:'pengirim',l:'Username pengirim',type:'text',list:'dl-username',w:150}, {k:'robux',l:'Robux',type:'number',req:1,w:100},
@@ -1190,10 +1251,11 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const q = QUICK[coll], box = document.querySelector(`[data-quick="${coll}"]`);
     box.innerHTML = `<div class="hd"><h3>${q.title}</h3>${q.extraBtn || ''}</div>
       <div class="bd"><textarea class="f" rows="3" data-qin placeholder="${esc(q.ph)}"></textarea>
-        <div class="row-gap" style="margin-top:10px"><button class="btn primary" data-qparse>Baca teks</button><span class="muted" style="font-size:12.5px">atau Ctrl/Cmd + Enter</span></div>
+        <div class="row-gap" style="margin-top:10px"><button class="btn primary" data-qparse>Baca teks</button>${q.importBtn ? '<button class="btn" id="btnImport">📄 Import sales</button><input type="file" id="impFile" accept=".csv,text/csv" hidden>' : ''}<span class="muted" style="font-size:12.5px">atau Ctrl/Cmd + Enter</span></div>
         <div data-qprev></div></div>`;
     const ta = box.querySelector('[data-qin]'), prev = box.querySelector('[data-qprev]');
     const run = () => {
+      if (coll === 'sales' && findImporter(ta.value)){ loadImport(ta.value); return; }
       const lines = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
       if (!lines.length){ toast('Tulis datanya dulu'); return; }
       quickRows[coll] = lines.map(q.parse); renderQuick(coll);
@@ -1268,6 +1330,13 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     };
   }
   $('#btnRules').onclick = openRules;
+  $('#btnImport').onclick = () => $('#impFile').click();
+  $('#impFile').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { loadImport(String(rd.result).replace(/^﻿/, '')); e.target.value = ''; };
+    rd.readAsText(f);
+  };
 
   // ---------- Kunci halaman & tab Akun ----------
   function sha256(str){
