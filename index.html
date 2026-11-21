@@ -1305,7 +1305,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
           q.cols.forEach(c => rec[c.k] = c.type === 'number' ? (+r[c.k] || 0) : String(r[c.k] ?? '').trim());
           if (coll === 'accounts') newAccountLimit(rec, r.sisaLimit);
           db[coll].push(rec); });
-        quickRows[coll] = []; box.querySelector('[data-qin]').value = '';
+        quickRows[coll] = []; box.querySelector('[data-qin]').value = ''; renderQuick(coll);
         save(); closeModal(); renderAll(); toast(`${rs.length} ${q.noun} disimpan`);
       };
     };
