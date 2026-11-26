@@ -457,6 +457,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     a.sisaLimit = calcSisa(a);
   }
   // Hubungan antar tab lewat username (tanpa @, huruf besar/kecil diabaikan)
+  // Pengirim grup (payout dari grup ORNA KUY, bukan akun) — tanpa @ dan tanpa cek saldo/limit akun
+  const GROUP_SENDER = 'ORNA KUY', isGroup = v => /^@?\s*orna\s*kuy$/i.test(String(v || '').trim());
   const ukey = u => String(u || '').replace(/^@+/, '').trim().toLowerCase();
   const findAcc = u => db.accounts.find(a => ukey(a.username) === ukey(u));
   const salesOf = a => db.sales.filter(x => x.pengirim && ukey(x.pengirim) === ukey(a.username));
@@ -537,7 +539,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       { k:'tanggal', label:'Tanggal', type:'date', req:true, def: today },
       { k:'sumber', label:'Sumber website', type:'text', list:'dl-sumber', req:true, ph:'mis. nama website / marketplace' },
       { k:'idPesanan', label:'ID pesanan', type:'text' },
-      { k:'pengirim', label:'Username pengirim', type:'text', list:'dl-username', ph:'akun yang mengirim Robux', fix: v => v ? '@' + v.replace(/^@+/, '') : v },
+      { k:'pengirim', label:'Username pengirim', type:'text', list:'dl-username', ph:'akun yang mengirim Robux', fix: v => !v ? v : isGroup(v) ? GROUP_SENDER : '@' + v.replace(/^@+/, '') },
       { k:'robux', label:'Jumlah Robux', type:'number', req:true },
       { k:'pendapatan', label:'Pendapatan (Rp)', type:'number' },
     ]},
@@ -803,7 +805,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       <tbody>${rows.length ? rows.map(r => `<tr>
         <td>${fmtDate(r.tanggal)}</td><td>${srcPill(r.sumber)}</td>
         <td class="num">${esc(r.idPesanan) || '<span class="muted">—</span>'}</td>
-        <td>${r.pengirim ? `<b>${esc(r.pengirim)}</b>${findAcc(r.pengirim) ? '' : ' <span class="pill Pending" title="Belum ada di tab Akun">?</span>'}` : '<span class="muted">—</span>'}</td>
+        <td>${r.pengirim ? `<b>${esc(r.pengirim)}</b>${findAcc(r.pengirim) || isGroup(r.pengirim) ? '' : ' <span class="pill Pending" title="Belum ada di tab Akun">?</span>'}` : '<span class="muted">—</span>'}</td>
         <td class="r num">${fmtRbx(r.robux)}</td><td class="r num">${fmtRp(r.pendapatan)}</td>${actions('sales', r.id)}</tr>`).join('')
         : emptyRow(7, q ? 'Tidak ada yang cocok.' : (db.sales.length ? 'Tidak ada sales di rentang tanggal ini.' : 'Belum ada data sales. Klik “+ Tambah sales”.'))}</tbody>
       ${rows.length ? `<tfoot><tr><td colspan="4">${rows.length} pesanan</td><td class="r num">${fmtRbx(tR)}</td><td class="r num">${fmtRp(tP)}</td><td></td></tr></tfoot>` : ''}`;
@@ -1157,7 +1159,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
       const det = g(r, 'Detail'), dm = (g(r, 'Tanggal lunas') || g(r, 'Tanggal pesan')).match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
       const rm = det.match(/(\d+(?:[.,]\d{3})*)\s*(k|rb)?\s*(?:R\$|robux)/i), tujuan = (det.match(/@[\w.]+/) || [''])[0];
       const uang = toNum(g(r, 'Uang masuk (lunas)') || g(r, 'Total tagihan') || '0'), seller = toNum(g(r, 'Bagian seller') || '0');
-      const o = { tanggal: (dm && validDate(+dm[1], +dm[2], +dm[3])) || today(), sumber: 'ORNA Store', idPesanan: id, pengirim: '',
+      const o = { tanggal: (dm && validDate(+dm[1], +dm[2], +dm[3])) || today(), sumber: 'ORNA Store', idPesanan: id, pengirim: GROUP_SENDER,
         robux: rm ? toNum(rm[1], rm[2]) : '', pendapatan: uang - seller, raw: `${det} · ${g(r, 'Pembeli')}${tujuan ? '' : ''}`, warn: [] };
       if (o.robux === '') o.warn.push('Robux tidak terdeteksi dari Detail');
       if (seller) o.warn.push(`Pendapatan sudah dikurangi bagian seller ${fmtRp(seller)}`);
@@ -1184,6 +1186,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   // Peringatan saldo / limit akun pengirim (tidak memblokir simpan)
   function salesAccWarn(r){
     if (!r.pengirim) return ['Username pengirim belum diisi — saldo & limit akun tidak berubah'];
+    if (isGroup(r.pengirim)) return [];
     const a = findAcc(r.pengirim);
     if (!a) return ['Username pengirim belum ada di tab Akun'];
     const w = [], rb = +r.robux || 0;
@@ -1256,7 +1259,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
               {k:'idPesanan',l:'ID pesanan',type:'text',ph:'(opsional)',w:170}, {k:'pengirim',l:'Username pengirim',type:'text',list:'dl-username',w:150}, {k:'robux',l:'Robux',type:'number',req:1,w:100},
               {k:'pendapatan',l:'Pendapatan (Rp)',type:'number',w:120} ],
       summary: rows => [['Total Robux', fmtInt(rows.reduce((s,r) => s + (+r.robux||0), 0))], ['Total pendapatan', fmtRp(rows.reduce((s,r) => s + (+r.pendapatan||0), 0))]],
-      fix: r => ({ ...r, pengirim: r.pengirim ? '@' + String(r.pengirim).trim().replace(/^@+/, '') : '' }),
+      fix: r => ({ ...r, pengirim: !r.pengirim ? '' : isGroup(r.pengirim) ? GROUP_SENDER : '@' + String(r.pengirim).trim().replace(/^@+/, '') }),
     },
     payouts: {
       title: '⚡ Tambah cepat payout', noun: 'payout', parse: parsePayout,
