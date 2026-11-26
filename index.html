@@ -421,7 +421,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
 
   // ---------- Storage ----------
   let storageOk = true;
-  const DEFAULT_RULES = () => [ { prefix:'OD', sumber:'Itemku' }, { prefix:'GBX-', sumber:'Indoblox' }, { prefix:'TRXOD-', sumber:'VCGamers' } ];
+  const DEFAULT_RULES = () => [ { prefix:'OD', sumber:'Itemku' }, { prefix:'GBX-', sumber:'Indoblox' }, { prefix:'TRXOD-', sumber:'VCGamers' }, { prefix:'ORNA-robux-', sumber:'ORNA Store' } ];
   // acuan awal dari screenshot halaman Revenue grup ORNA (8 Nov 2026)
   const BASE_SNAP = () => [{ id: 'base-20261108', tanggal: '2026-11-08', funds: 73145, pending: 685313, revenuePayouts: 3200 }];
   const blank = () => ({ sales: [], payouts: [], accounts: [], snapshots: BASE_SNAP(), settings: { target: 100000, idRules: DEFAULT_RULES() } });
@@ -431,6 +431,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     if (!Array.isArray(db.settings.idRules)) db.settings.idRules = DEFAULT_RULES();
     // pola VCGamers ditambahkan otomatis untuk data lama
     if (!db.settings.idRules.some(r => /^trx/i.test(r.prefix || ''))) db.settings.idRules.push({ prefix:'TRXOD-', sumber:'VCGamers' });
+    if (!db.settings.idRules.some(r => /^orna-/i.test(r.prefix || ''))) db.settings.idRules.push({ prefix:'ORNA-robux-', sumber:'ORNA Store' });
     if (!Array.isArray(db.snapshots)) db.snapshots = BASE_SNAP();
     // bersihkan sisa data demo (id diawali "demo-")
     let cleaned = 0;
@@ -1130,16 +1131,50 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     });
     return { rows: out, skipped, dup };
   }
+  function loadXlsx(){
+    return new Promise((res, rej) => {
+      if (window.XLSX) return res(window.XLSX);
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      sc.onload = () => window.XLSX ? res(window.XLSX) : rej(new Error('xlsx'));
+      sc.onerror = () => rej(new Error('xlsx'));
+      document.head.appendChild(sc);
+    });
+  }
   // Daftar format file import sales. Tambah format baru di sini: { nama, cocok(teks), baca(teks) }
+  // ORNA Store: file "pesanan lunas" (.xlsx) — hanya jenis Robux Payout yang masuk ke Sales
+  const looksOrna = text => { const h = csvRows(text)[0] || []; return h.includes('Nomor') && h.includes('Jenis') && h.some(x => /uang masuk/i.test(x)); };
+  function parseOrna(text){
+    const rows = csvRows(text), head = rows[0], idx = {};
+    head.forEach((h, i) => idx[h] = i);
+    const g = (r, k) => String(r[idx[k]] ?? '').trim();
+    const out = []; let skipped = 0, dup = 0, other = 0;
+    rows.slice(1).forEach(r => {
+      const id = g(r, 'Nomor'); if (!id) return;
+      if (!/robux/i.test(g(r, 'Jenis'))){ other++; return; }
+      if (/batal|refund|gagal/i.test(g(r, 'Status')) || /^(ya|y|true|1)$/i.test(g(r, 'Pesanan tes'))){ skipped++; return; }
+      if (db.sales.some(s => (s.idPesanan || '').toUpperCase() === id.toUpperCase())){ dup++; return; }
+      const det = g(r, 'Detail'), dm = (g(r, 'Tanggal lunas') || g(r, 'Tanggal pesan')).match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+      const rm = det.match(/(\d+(?:[.,]\d{3})*)\s*(k|rb)?\s*(?:R\$|robux)/i), tujuan = (det.match(/@[\w.]+/) || [''])[0];
+      const uang = toNum(g(r, 'Uang masuk (lunas)') || g(r, 'Total tagihan') || '0'), seller = toNum(g(r, 'Bagian seller') || '0');
+      const o = { tanggal: (dm && validDate(+dm[1], +dm[2], +dm[3])) || today(), sumber: 'ORNA Store', idPesanan: id, pengirim: '',
+        robux: rm ? toNum(rm[1], rm[2]) : '', pendapatan: uang - seller, raw: `${det} · ${g(r, 'Pembeli')}${tujuan ? '' : ''}`, warn: [] };
+      if (o.robux === '') o.warn.push('Robux tidak terdeteksi dari Detail');
+      if (seller) o.warn.push(`Pendapatan sudah dikurangi bagian seller ${fmtRp(seller)}`);
+      out.push(o);
+    });
+    return { rows: out, skipped, dup, other };
+  }
   const IMPORTERS = [
     { nama: 'VCGamers (TRX)', cocok: looksVcg, baca: parseVcg },
+    { nama: 'ORNA Store', cocok: looksOrna, baca: parseOrna },
   ];
   const findImporter = text => IMPORTERS.find(f => f.cocok(text));
   function loadImport(text){
     const f = findImporter(text);
     if (!f){ toast('Format file belum dikenali (saat ini: ' + IMPORTERS.map(x => x.nama).join(', ') + ')'); return false; }
-    const { rows, skipped, dup } = f.baca(text);
-    const info = [dup && `${dup} sudah tercatat`, skipped && `${skipped} dibatalkan`].filter(Boolean).join(', ');
+    const { rows, skipped, dup, other } = f.baca(text);
+    const info = [dup && `${dup} sudah tercatat`, skipped && `${skipped} dibatalkan/tes`, other && `${other} bukan Robux`].filter(Boolean).join(', ');
     if (!rows.length){ toast(info ? `Tidak ada transaksi baru (${info})` : `Tidak ada transaksi terbaca dari file ${f.nama}`); return false; }
     quickRows.sales = rows; renderQuick('sales');
     toast(`${f.nama}: ${rows.length} transaksi baru terbaca${info ? ` · dilewati: ${info}` : ''} — isi pengirim lalu simpan`);
@@ -1251,7 +1286,7 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
     const q = QUICK[coll], box = document.querySelector(`[data-quick="${coll}"]`);
     box.innerHTML = `<div class="hd"><h3>${q.title}</h3>${q.extraBtn || ''}</div>
       <div class="bd"><textarea class="f" rows="3" data-qin placeholder="${esc(q.ph)}"></textarea>
-        <div class="row-gap" style="margin-top:10px"><button class="btn primary" data-qparse>Baca teks</button>${q.importBtn ? '<button class="btn" id="btnImport">📄 Import sales</button><input type="file" id="impFile" accept=".csv,text/csv" hidden>' : ''}<span class="muted" style="font-size:12.5px">atau Ctrl/Cmd + Enter</span></div>
+        <div class="row-gap" style="margin-top:10px"><button class="btn primary" data-qparse>Baca teks</button>${q.importBtn ? '<button class="btn" id="btnImport">📄 Import sales</button><input type="file" id="impFile" accept=".csv,.xlsx,.xls,text/csv" hidden>' : ''}<span class="muted" style="font-size:12.5px">atau Ctrl/Cmd + Enter</span></div>
         <div data-qprev></div></div>`;
     const ta = box.querySelector('[data-qin]'), prev = box.querySelector('[data-qprev]');
     const run = () => {
@@ -1334,8 +1369,22 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
   $('#impFile').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
     const rd = new FileReader();
-    rd.onload = () => { loadImport(String(rd.result).replace(/^﻿/, '')); e.target.value = ''; };
-    rd.readAsText(f);
+    const done = () => { e.target.value = ''; };
+    if (/\.xlsx?$/i.test(f.name)){
+      // Excel: dibaca dengan SheetJS, tiap sheet diubah ke CSV lalu dicocokkan ke format import
+      rd.onload = async () => {
+        try {
+          const X = await loadXlsx(), wb = X.read(new Uint8Array(rd.result), { type: 'array' });
+          const csv = wb.SheetNames.map(n => X.utils.sheet_to_csv(wb.Sheets[n], { blankrows: false })).find(t => findImporter(t));
+          if (csv) loadImport(csv); else toast('Format file belum dikenali (saat ini: ' + IMPORTERS.map(x => x.nama).join(', ') + ')');
+        } catch(err){ toast('File Excel tidak bisa dibaca'); }
+        done();
+      };
+      rd.readAsArrayBuffer(f);
+    } else {
+      rd.onload = () => { loadImport(String(rd.result).replace(/^﻿/, '')); done(); };
+      rd.readAsText(f);
+    }
   };
 
   // ---------- Kunci halaman & tab Akun ----------
